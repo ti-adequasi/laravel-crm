@@ -168,8 +168,53 @@ Event::listen('lead.create.after', function ($lead) {
 });
 ```
 
+**3. `view_render_event()` — injects UI into an existing core page.** Core
+Blade files are threaded with hook points like
+`{!! view_render_event('admin.leads.view.actions.after', ['lead' => $lead]) !!}`
+(`grep -rn view_render_event packages/Webkul/Admin/src/Resources/views` to
+see what a given page offers). Listen from your provider's `boot()` and
+register a partial — the `$params` array becomes that partial's view data:
+
+```php
+Event::listen('admin.leads.view.actions.after', function (\Webkul\Core\ViewRenderEventManager $manager) {
+    $manager->addTemplate('your_module::partials.your-button');
+});
+```
+
+A module that only adds a button/action this way — no new entity — needs no
+`Model`, `Contract`, `Proxy`, migration, or `config/concord.php` entry at
+all. It's still self-contained: own `Controller`, `Route`, `Resources/views`,
+own provider — just with an empty data layer. `LeadEnrichment` is a real
+example: one route, one injected button, zero tables.
+
 Edit the core file directly only when neither mechanism covers the change,
 and say so explicitly in the PR description.
+
+---
+
+## A Custom Attribute You're Relying On May Not Exist
+
+Don't assume an entity attribute exists just because it's a natural fit
+(e.g. an `Organization` "site" field) — Krayin's stock attribute set is
+narrower than it looks (`php artisan tinker --execute="dd(app(\Webkul\Attribute\Repositories\AttributeRepository::class)->findWhere(['entity_type' => 'organizations'])->pluck('code'))"`
+to check what really ships). If a package's logic depends on one, create it
+in a migration, guarded so two packages needing the same attribute don't
+collide:
+
+```php
+if (! DB::table('attributes')->where('code', 'site')->where('entity_type', 'organizations')->exists()) {
+    DB::table('attributes')->insert([
+        'code' => 'site', 'name' => 'Site', 'type' => 'text',
+        'entity_type' => 'organizations', 'validation' => 'url',
+        'sort_order' => 10, 'is_required' => 0, 'is_unique' => 0,
+        'quick_add' => 0, 'is_user_defined' => 1,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+}
+```
+
+Leave `down()` empty — dropping the attribute would silently discard real
+data on it.
 
 ---
 

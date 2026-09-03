@@ -1,0 +1,25 @@
+{
+    "name": "krayin/laravel-lead-enrichment",
+    "license": "MIT",
+    "description": "Manual 'enrich this lead' action for any CRM lead, reusing LeadGreen's scraping/CNPJ engine. No new entity — a Controller + Route + a button injected into the existing lead page via view_render_event.",
+    "require": {
+        "krayin/laravel-core": "^1.0",
+        "krayin/laravel-lead": "^1.0",
+        "krayin/laravel-activity": "^1.0",
+        "krayin/laravel-leadgreen": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Webkul\\LeadEnrichment\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\LeadEnrichment\\Providers\\LeadEnrichmentServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "minimum-stability": "dev"
+}

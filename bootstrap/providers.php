@@ -17,6 +17,7 @@ use Webkul\EmailTemplate\Providers\EmailTemplateServiceProvider;
 use Webkul\GoogleContact\Providers\GoogleContactServiceProvider;
 use Webkul\Installer\Providers\InstallerServiceProvider;
 use Webkul\Lead\Providers\LeadServiceProvider;
+use Webkul\LeadEnrichment\Providers\LeadEnrichmentServiceProvider;
 use Webkul\LeadGreen\Providers\LeadGreenServiceProvider;
 use Webkul\Marketing\Providers\MarketingServiceProvider;
 use Webkul\Product\Providers\ProductServiceProvider;
@@ -57,6 +58,7 @@ return [
     MarketingServiceProvider::class,
     InstallerServiceProvider::class,
     LeadServiceProvider::class,
+    LeadEnrichmentServiceProvider::class,
     LeadGreenServiceProvider::class,
     ProductServiceProvider::class,
     QuoteServiceProvider::class,

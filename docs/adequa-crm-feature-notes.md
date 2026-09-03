@@ -59,16 +59,22 @@ the package, add the missing `CREATE TABLE` migration, register the
 
 ---
 
-## 2. Lead enrichment ✅ Engine built (as part of §1) — manual trigger on regular leads still open
+## 2. Lead enrichment ✅ Built
 
-The engine (site scraping + CNPJ cascade) and its use on LeadGreen prospects
-shipped with §1 — `enrich(int $id)` on `LeadGreenController`, scheduled via
-`leadgreen:enrich-pending`. **Not built**: the separate "Enriquecer dados"
-button on a *regular* (non-Google-sourced) CRM lead's own page, which in the
-source lived in `Admin/Http/Controllers/Lead/EnrichmentController.php` — that
-would still mean touching `packages/Webkul/Admin` today; a `lead.create.after`
-event listener (the skill's second extension mechanism) is the cleaner way to
-get it without editing core, if it's still wanted.
+Both halves shipped now. The engine (site scraping + CNPJ cascade) and its
+use on LeadGreen prospects came with §1 — `enrich(int $id)` on
+`LeadGreenController`, scheduled via `leadgreen:enrich-pending`. The manual
+"Enrich" button on a *regular* (non-Google-sourced) lead's own page is
+`packages/Webkul/LeadEnrichment` — no core file touched; the button is
+injected into `leads/view.blade.php`'s existing `admin.leads.view.actions.after`
+hook via `view_render_event()` (now documented in the skill as the third
+extension mechanism, alongside Contract/Proxy and before/after events).
+
+One real gap this surfaced: `Organization` has no `site` attribute out of
+the box in this Krayin install — it was a custom attribute in the *source*
+that nothing here had ever created. Fixed with a guarded migration in
+LeadGreen (`2026_09_03_000001_add_site_attribute_to_organizations`), which
+both packages depend on.
 
 <details>
 <summary>Original audit</summary>
