@@ -4,9 +4,7 @@ namespace Webkul\LeadGreen\Repositories;
 
 use Illuminate\Container\Container;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Attribute\Repositories\AttributeValueRepository;
 use Webkul\Contact\Repositories\OrganizationRepository;
@@ -14,6 +12,8 @@ use Webkul\Contact\Repositories\PersonRepository;
 use Webkul\Core\Eloquent\Repository;
 use Webkul\Lead\Repositories\LeadRepository;
 use Webkul\LeadGreen\Contracts\LeadGreen;
+use Webkul\LeadGreen\Services\CnpjService;
+use Webkul\LeadGreen\Services\LeadEnrichmentService;
 
 class LeadGreenRepository extends Repository
 {
@@ -101,14 +101,25 @@ class LeadGreenRepository extends Repository
      * Organization, create a Person from whatever enrichment data is
      * available (a partner/administrator or the DPO), then create the Lead
      * against both.
+     *
+     * @param  int|null  $pipelineId  target pipeline; falls back to whichever
+     *                                pipeline is flagged default when omitted
+     * @param  int|null  $stageId  target stage within that pipeline; falls
+     *                             back to the pipeline's first stage (sort
+     *                             order) when omitted — a freshly-scraped,
+     *                             not-yet-contacted business belongs at the
+     *                             start of the funnel, never mid-pipeline
      */
-    public function convertToLead(int $id)
+    public function convertToLead(int $id, ?int $pipelineId = null, ?int $stageId = null)
     {
         $prospect = $this->findOrFail($id);
 
         if ($prospect->isConverted()) {
             throw new \Exception('This prospect has already been converted.');
         }
+
+        $pipelineId = $pipelineId ?: $this->getDefaultPipelineId();
+        $stageId = $stageId ?: $this->getFirstStageId($pipelineId);
 
         DB::beginTransaction();
 
@@ -120,16 +131,16 @@ class LeadGreenRepository extends Repository
             // Leads have no organization_id of their own — the Organization is
             // reached through the Person created above (Person::organization_id).
             $lead = $this->leadRepository->create([
-                'title'                  => $prospect->name,
-                'description'            => $this->buildEnrichmentDescription($prospect),
-                'lead_value'             => 0,
-                'status'                 => 'open',
-                'user_id'                => auth()->id(),
-                'person_id'              => $person?->id,
-                'lead_source_id'         => $this->getLeadSourceId('google'),
-                'lead_pipeline_id'       => $this->getDefaultPipelineId(),
-                'lead_pipeline_stage_id' => $this->getDefaultStageId(),
-                'entity_type'            => 'leads',
+                'title' => $prospect->name,
+                'description' => $this->buildEnrichmentDescription($prospect),
+                'lead_value' => 0,
+                'status' => 'open',
+                'user_id' => auth()->id(),
+                'person_id' => $person?->id,
+                'lead_source_id' => $this->getLeadSourceId('google'),
+                'lead_pipeline_id' => $pipelineId,
+                'lead_pipeline_stage_id' => $stageId,
+                'entity_type' => 'leads',
             ]);
 
             $prospect->lead_status = 'convertido';
@@ -168,14 +179,14 @@ class LeadGreenRepository extends Repository
         $zipCode = $this->extractCEP($prospect->full_address);
 
         $organization = $this->organizationRepository->create([
-            'name'        => $prospect->name,
-            'address'     => [
-                'address'  => $prospect->full_address ?? '',
-                'country'  => 'BR',
-                'state'    => $prospect->state ?? '',
-                'city'     => $prospect->city ?? '',
+            'name' => $prospect->name,
+            'address' => [
+                'address' => $prospect->full_address ?? '',
+                'country' => 'BR',
+                'state' => $prospect->state ?? '',
+                'city' => $prospect->city ?? '',
                 'postcode' => $zipCode,
-                'website'  => $prospect->website ?? '',
+                'website' => $prospect->website ?? '',
             ],
             'entity_type' => 'organizations',
         ]);
@@ -183,14 +194,14 @@ class LeadGreenRepository extends Repository
         if ($prospect->website) {
             $siteAttribute = $this->attributeRepository->findOneWhere([
                 'entity_type' => 'organizations',
-                'code'        => 'site',
+                'code' => 'site',
             ]);
 
             if ($siteAttribute) {
                 $this->attributeValueRepository->save([
                     'entity_type' => 'organizations',
-                    'entity_id'   => $organization->id,
-                    'site'        => $prospect->website,
+                    'entity_id' => $organization->id,
+                    'site' => $prospect->website,
                 ]);
             }
         }
@@ -251,13 +262,13 @@ class LeadGreenRepository extends Repository
             ->all();
 
         return $this->personRepository->create([
-            'name'            => $name,
-            'job_title'       => $jobTitle,
-            'emails'          => $emails ?: [['value' => null, 'label' => 'work']],
+            'name' => $name,
+            'job_title' => $jobTitle,
+            'emails' => $emails ?: [['value' => null, 'label' => 'work']],
             'contact_numbers' => $phones ?: [['value' => null, 'label' => 'work']],
             'organization_id' => $organization->id,
-            'user_id'         => auth()->id(),
-            'entity_type'     => 'persons',
+            'user_id' => auth()->id(),
+            'entity_type' => 'persons',
         ]);
     }
 
@@ -398,10 +409,10 @@ class LeadGreenRepository extends Repository
         return $pipeline->id ?? 1;
     }
 
-    protected function getDefaultStageId(): int
+    protected function getFirstStageId(int $pipelineId): int
     {
         $stage = DB::table('lead_pipeline_stages')
-            ->where('lead_pipeline_id', $this->getDefaultPipelineId())
+            ->where('lead_pipeline_id', $pipelineId)
             ->orderBy('sort_order', 'asc')
             ->first();
 
@@ -424,13 +435,20 @@ class LeadGreenRepository extends Repository
      * Import a list of raw Google Maps results, deduped by business_id.
      * Only businesses with a website that aren't permanently closed are kept.
      *
-     * @return array{found: int, inserted: int, skipped: int}
+     * @param  int|null  $pipelineId  when given, each imported prospect is
+     *                                immediately converted into a real CRM
+     *                                lead in this pipeline — importing is no
+     *                                longer a dead-end staging step. Omit to
+     *                                keep the old behaviour (import only,
+     *                                convert later from the prospect list).
+     * @return array{found: int, inserted: int, skipped: int, converted: int}
      */
-    public function importResults(array $results): array
+    public function importResults(array $results, ?int $pipelineId = null): array
     {
         $found = count($results);
         $inserted = 0;
         $skipped = 0;
+        $converted = 0;
 
         $existing = $this->findExistingBusinessIds(array_filter(array_column($results, 'business_id')));
 
@@ -450,7 +468,7 @@ class LeadGreenRepository extends Repository
             }
 
             try {
-                $this->create($this->normalizeResult($result));
+                $prospect = $this->create($this->normalizeResult($result));
 
                 $existing[] = $businessId;
                 $inserted++;
@@ -458,10 +476,25 @@ class LeadGreenRepository extends Repository
                 logger()->error('LeadGreen import failed for business_id '.$businessId, ['message' => $e->getMessage()]);
 
                 $skipped++;
+
+                continue;
+            }
+
+            if ($pipelineId) {
+                try {
+                    $this->convertToLead($prospect->id, $pipelineId);
+
+                    $converted++;
+                } catch (\Exception $e) {
+                    // The prospect itself was created fine — it just stays
+                    // unconverted, same as before this feature existed, so
+                    // it's still visible and convertible by hand later.
+                    logger()->error('LeadGreen auto-convert failed for prospect '.$prospect->id, ['message' => $e->getMessage()]);
+                }
             }
         }
 
-        return compact('found', 'inserted', 'skipped');
+        return compact('found', 'inserted', 'skipped', 'converted');
     }
 
     /**
@@ -489,31 +522,31 @@ class LeadGreenRepository extends Repository
         $city = $originalCity ? trim(explode('-', $originalCity)[0]) : null;
 
         return [
-            'business_id'           => $r['business_id'],
-            'phone_number'          => $r['phone_number'] ?? null,
-            'name'                  => $r['name'] ?? '',
-            'full_address'          => $r['full_address'] ?? null,
-            'full_address_array'    => $r['full_address_array'] ?? [],
-            'latitude'              => $r['latitude'] ?? null,
-            'longitude'             => $r['longitude'] ?? null,
-            'review_count'          => $r['review_count'] ?? null,
-            'rating'                => $r['rating'] ?? null,
-            'timezone'              => $r['timezone'] ?? null,
-            'website'               => $r['website'] ?? null,
-            'place_id'              => $r['place_id'] ?? null,
-            'place_link'            => $r['place_link'] ?? null,
-            'types'                 => $r['types'] ?? [],
-            'price_level'           => $r['price_level'] ?? null,
-            'working_hours'         => $r['working_hours'] ?? [],
-            'city'                  => $city,
-            'state'                 => $state,
-            'is_claimed'            => ! empty($r['is_claimed']),
-            'verified'              => ! empty($r['verified']),
+            'business_id' => $r['business_id'],
+            'phone_number' => $r['phone_number'] ?? null,
+            'name' => $r['name'] ?? '',
+            'full_address' => $r['full_address'] ?? null,
+            'full_address_array' => $r['full_address_array'] ?? [],
+            'latitude' => $r['latitude'] ?? null,
+            'longitude' => $r['longitude'] ?? null,
+            'review_count' => $r['review_count'] ?? null,
+            'rating' => $r['rating'] ?? null,
+            'timezone' => $r['timezone'] ?? null,
+            'website' => $r['website'] ?? null,
+            'place_id' => $r['place_id'] ?? null,
+            'place_link' => $r['place_link'] ?? null,
+            'types' => $r['types'] ?? [],
+            'price_level' => $r['price_level'] ?? null,
+            'working_hours' => $r['working_hours'] ?? [],
+            'city' => $city,
+            'state' => $state,
+            'is_claimed' => ! empty($r['is_claimed']),
+            'verified' => ! empty($r['verified']),
             'is_permanently_closed' => ! empty($r['is_permanently_closed']),
             'is_temporarily_closed' => ! empty($r['is_temporarily_closed']),
-            'photos'                => $r['photos'] ?? [],
-            'description'           => $r['description'] ?? [],
-            'lead_status'           => 'novo',
+            'photos' => $r['photos'] ?? [],
+            'description' => $r['description'] ?? [],
+            'lead_status' => 'novo',
         ];
     }
 
@@ -534,14 +567,14 @@ class LeadGreenRepository extends Repository
             return $prospect;
         }
 
-        $data = app(\Webkul\LeadGreen\Services\LeadEnrichmentService::class)
+        $data = app(LeadEnrichmentService::class)
             ->enrichFromWebsite($prospect->website);
 
         $cnpj = $data['cnpj'] ?? null;
         unset($data['cnpj']);
 
         if ($cnpj) {
-            $cnpjService = app(\Webkul\LeadGreen\Services\CnpjService::class);
+            $cnpjService = app(CnpjService::class);
             $company = $cnpjService->lookup($cnpj);
 
             if ($company) {
@@ -604,18 +637,18 @@ class LeadGreenRepository extends Repository
             $types = is_array($prospect->types) ? implode(', ', $prospect->types) : '';
 
             return [
-                'ID'          => $prospect->id,
-                'Nome'        => $prospect->name,
-                'Telefone'    => $prospect->phone_number ?? '',
-                'Website'     => $prospect->website ?? '',
-                'Cidade'      => $prospect->city ?? '',
-                'Estado'      => $prospect->state ?? '',
-                'CEP'         => $this->extractCEP($prospect->full_address),
-                'Endereço'    => $prospect->full_address ?? '',
-                'Tipos'       => $types,
-                'Avaliação'   => $prospect->rating ?? '',
-                'Reviews'     => $prospect->review_count ?? 0,
-                'Status'      => $this->getStatusLabel($prospect->lead_status),
+                'ID' => $prospect->id,
+                'Nome' => $prospect->name,
+                'Telefone' => $prospect->phone_number ?? '',
+                'Website' => $prospect->website ?? '',
+                'Cidade' => $prospect->city ?? '',
+                'Estado' => $prospect->state ?? '',
+                'CEP' => $this->extractCEP($prospect->full_address),
+                'Endereço' => $prospect->full_address ?? '',
+                'Tipos' => $types,
+                'Avaliação' => $prospect->rating ?? '',
+                'Reviews' => $prospect->review_count ?? 0,
+                'Status' => $this->getStatusLabel($prospect->lead_status),
                 'Link Google' => $prospect->place_link ?? '',
             ];
         });
@@ -630,7 +663,7 @@ class LeadGreenRepository extends Repository
     protected function exportToCsv($data, string $filename)
     {
         $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}.csv\"",
         ];
 
@@ -669,15 +702,15 @@ class LeadGreenRepository extends Repository
         })->implode('');
 
         $html = view('leadgreen::export.html', [
-            'rows'       => $rows,
-            'total'      => $data->count(),
+            'rows' => $rows,
+            'total' => $data->count(),
             'exportedAt' => now()->format('d/m/Y H:i'),
         ])->render();
 
         return response()->stream(function () use ($html) {
             echo $html;
         }, 200, [
-            'Content-Type'        => 'text/html; charset=UTF-8',
+            'Content-Type' => 'text/html; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}.html\"",
         ]);
     }
@@ -685,10 +718,10 @@ class LeadGreenRepository extends Repository
     protected function getStatusLabel(string $status): string
     {
         return [
-            'novo'           => 'Novo',
-            'em_prospeccao'  => 'Em prospecção',
-            'convertido'     => 'Convertido',
-            'descartado'     => 'Descartado',
+            'novo' => 'Novo',
+            'em_prospeccao' => 'Em prospecção',
+            'convertido' => 'Convertido',
+            'descartado' => 'Descartado',
             'reaproveitavel' => 'Reaproveitável',
         ][$status] ?? $status;
     }

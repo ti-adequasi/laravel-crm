@@ -73,28 +73,28 @@ class LeadGreenController extends Controller
 
             $leads = array_map(function ($r) use ($existing) {
                 return [
-                    'business_id'           => $r['business_id'] ?? null,
-                    'name'                  => $r['name'] ?? null,
-                    'phone_number'          => $r['phone_number'] ?? null,
-                    'website'               => $r['website'] ?? null,
-                    'has_website'           => ! empty($r['website']),
-                    'full_address'          => $r['full_address'] ?? null,
-                    'city'                  => $r['city'] ?? null,
-                    'state'                 => $r['state'] ?? null,
-                    'rating'                => $r['rating'] ?? null,
-                    'review_count'          => $r['review_count'] ?? null,
-                    'types'                 => $r['types'] ?? [],
-                    'working_hours'         => $r['working_hours'] ?? null,
-                    'price_level'           => $r['price_level'] ?? null,
-                    'is_claimed'            => ! empty($r['is_claimed']),
-                    'verified'              => ! empty($r['verified']),
+                    'business_id' => $r['business_id'] ?? null,
+                    'name' => $r['name'] ?? null,
+                    'phone_number' => $r['phone_number'] ?? null,
+                    'website' => $r['website'] ?? null,
+                    'has_website' => ! empty($r['website']),
+                    'full_address' => $r['full_address'] ?? null,
+                    'city' => $r['city'] ?? null,
+                    'state' => $r['state'] ?? null,
+                    'rating' => $r['rating'] ?? null,
+                    'review_count' => $r['review_count'] ?? null,
+                    'types' => $r['types'] ?? [],
+                    'working_hours' => $r['working_hours'] ?? null,
+                    'price_level' => $r['price_level'] ?? null,
+                    'is_claimed' => ! empty($r['is_claimed']),
+                    'verified' => ! empty($r['verified']),
                     'is_permanently_closed' => ! empty($r['is_permanently_closed']),
                     'is_temporarily_closed' => ! empty($r['is_temporarily_closed']),
-                    'latitude'              => $r['latitude'] ?? null,
-                    'longitude'             => $r['longitude'] ?? null,
-                    'place_link'            => $r['place_link'] ?? null,
-                    'photos'                => $r['photos'] ?? [],
-                    'is_duplicate'          => in_array($r['business_id'] ?? null, $existing, true),
+                    'latitude' => $r['latitude'] ?? null,
+                    'longitude' => $r['longitude'] ?? null,
+                    'place_link' => $r['place_link'] ?? null,
+                    'photos' => $r['photos'] ?? [],
+                    'is_duplicate' => in_array($r['business_id'] ?? null, $existing, true),
                 ];
             }, $candidates);
 
@@ -108,14 +108,14 @@ class LeadGreenController extends Controller
             Cache::put('leadgreen_search_'.$token, $candidates, now()->addMinutes(30));
 
             return response()->json([
-                'token'  => $token,
+                'token' => $token,
                 'counts' => [
-                    'total'        => $total,
+                    'total' => $total,
                     'with_website' => count($withWebsite),
-                    'duplicates'   => $duplicates,
-                    'new'          => count($withWebsite) - $duplicates,
+                    'duplicates' => $duplicates,
+                    'new' => count($withWebsite) - $duplicates,
                 ],
-                'leads'  => $leads,
+                'leads' => $leads,
             ]);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
@@ -130,9 +130,10 @@ class LeadGreenController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'token'          => 'required|string',
-            'business_ids'   => 'required|array|min:1',
+            'token' => 'required|string',
+            'business_ids' => 'required|array|min:1',
             'business_ids.*' => 'string',
+            'pipeline_id' => 'nullable|integer|exists:lead_pipelines,id',
         ]);
 
         $results = Cache::get('leadgreen_search_'.$request->input('token'));
@@ -147,11 +148,11 @@ class LeadGreenController extends Controller
         ));
 
         try {
-            $stats = $this->leadGreenRepository->importResults($selected);
+            $stats = $this->leadGreenRepository->importResults($selected, $request->input('pipeline_id'));
 
             return response()->json([
                 'message' => trans('leadgreen::app.search.success', $stats),
-                'stats'   => $stats,
+                'stats' => $stats,
             ]);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
@@ -177,8 +178,12 @@ class LeadGreenController extends Controller
     /**
      * Convert a prospect into a real CRM lead.
      */
-    public function convert(int $id)
+    public function convert(Request $request, int $id)
     {
+        $request->validate([
+            'pipeline_id' => 'nullable|integer|exists:lead_pipelines,id',
+        ]);
+
         $lead = $this->leadGreenRepository->find($id);
 
         if (! $lead) {
@@ -190,10 +195,10 @@ class LeadGreenController extends Controller
         }
 
         try {
-            $opportunity = $this->leadGreenRepository->convertToLead($id);
+            $opportunity = $this->leadGreenRepository->convertToLead($id, $request->input('pipeline_id'));
 
             return response()->json([
-                'message'  => trans('leadgreen::app.success.converted'),
+                'message' => trans('leadgreen::app.success.converted'),
                 'redirect' => route('admin.leads.view', $opportunity->id),
             ]);
         } catch (\Exception $e) {
@@ -239,7 +244,7 @@ class LeadGreenController extends Controller
 
             return response()->json([
                 'message' => trans('leadgreen::app.enrichment.success'),
-                'lead'    => $lead,
+                'lead' => $lead,
             ]);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
@@ -261,14 +266,14 @@ class LeadGreenController extends Controller
         $processed = $total - $pending;
 
         return response()->json([
-            'total'      => $total,
-            'pending'    => $pending,
-            'enriched'   => (int) ($byStatus['enriched'] ?? 0),
-            'empty'      => (int) ($byStatus['empty'] ?? 0),
+            'total' => $total,
+            'pending' => $pending,
+            'enriched' => (int) ($byStatus['enriched'] ?? 0),
+            'empty' => (int) ($byStatus['empty'] ?? 0),
             'no_website' => (int) ($byStatus['no_website'] ?? 0),
-            'failed'     => (int) ($byStatus['failed'] ?? 0),
-            'processed'  => $processed,
-            'percent'    => $total > 0 ? (int) round($processed / $total * 100) : 100,
+            'failed' => (int) ($byStatus['failed'] ?? 0),
+            'processed' => $processed,
+            'percent' => $total > 0 ? (int) round($processed / $total * 100) : 100,
         ]);
     }
 

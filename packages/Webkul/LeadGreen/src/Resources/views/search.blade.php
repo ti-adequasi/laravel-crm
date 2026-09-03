@@ -3,6 +3,10 @@
         @lang('leadgreen::app.search.title')
     </x-slot>
 
+    @php
+        $pipelines = \Webkul\Lead\Models\PipelineProxy::modelClass()::orderBy('name')->get(['id', 'name', 'is_default']);
+    @endphp
+
     <v-leadgreen-search></v-leadgreen-search>
 
     @pushOnce('scripts')
@@ -61,6 +65,88 @@
                             />
                         </div>
 
+                        <!-- Search filters — every control here is set before clicking Buscar.
+                             They all read straight off provider fields (website, rating, review
+                             count, phone, closed status, verified) that exist for any query, so
+                             none of them need to see a result first. Re-usable live if changed
+                             after a search too, but nothing here is *gated* on having searched. -->
+                        <div class="flex flex-col gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+                            <label class="font-medium text-gray-800 dark:text-white">
+                                @lang('leadgreen::app.search.filters.section-title')
+                            </label>
+
+                            <div class="flex flex-wrap items-end gap-4">
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.website')</label>
+                                    <select
+                                        v-model="filters.hasWebsite"
+                                        class="custom-select rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    >
+                                        <option value="yes">@lang('leadgreen::app.search.filters.website-yes')</option>
+                                        <option value="all">@lang('leadgreen::app.search.filters.website-all')</option>
+                                        <option value="no">@lang('leadgreen::app.search.filters.website-no')</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.min-rating')</label>
+                                    <select
+                                        v-model.number="filters.minRating"
+                                        class="custom-select rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    >
+                                        <option :value="0">@lang('leadgreen::app.search.filters.any')</option>
+                                        <option :value="3">★ 3+</option>
+                                        <option :value="3.5">★ 3.5+</option>
+                                        <option :value="4">★ 4+</option>
+                                        <option :value="4.5">★ 4.5+</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.min-reviews')</label>
+                                    <input
+                                        type="number"
+                                        v-model.number="filters.minReviews"
+                                        min="0"
+                                        placeholder="0"
+                                        class="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    />
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <input type="checkbox" v-model="filters.hasPhone" />
+                                        @lang('leadgreen::app.search.filters.has-phone')
+                                    </label>
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <input type="checkbox" v-model="filters.hideClosed" />
+                                        @lang('leadgreen::app.search.filters.hide-closed')
+                                    </label>
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <input type="checkbox" v-model="filters.verifiedOnly" />
+                                        @lang('leadgreen::app.search.filters.verified-only')
+                                    </label>
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <input type="checkbox" v-model="filters.hideDuplicates" />
+                                        @lang('leadgreen::app.search.filters.hide-duplicates')
+                                    </label>
+                                </div>
+
+                                <div v-if="preview" class="ml-auto text-sm text-gray-500 dark:text-gray-400">
+                                    @{{ filteredLeads.length }} / @{{ preview.leads.length }}
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="flex gap-2">
                             <button
                                 type="button"
@@ -105,54 +191,47 @@
                         </div>
                     </div>
 
-                    <!-- Filters -->
-                    <div class="flex flex-wrap items-end gap-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.website')</label>
-                            <select
-                                v-model="filters.hasWebsite"
-                                class="custom-select rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    <!-- Step 2: refine by category. Unlike every filter in the search form
+                         above, this can't be set before searching — the provider has no
+                         "type" parameter (confirmed against the live API: passing one back
+                         is silently ignored), so which categories exist is only knowable
+                         from a real result set. Built from this search's own data, not a
+                         guessed list, so it only ever offers categories that can match. -->
+                    <div v-if="availableTypes.length" class="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="font-medium text-gray-800 dark:text-white">
+                                    @lang('leadgreen::app.search.filters.types-label')
+                                </label>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    @lang('leadgreen::app.search.filters.types-hint')
+                                </p>
+                            </div>
+
+                            <button
+                                v-if="filters.types.length"
+                                type="button"
+                                class="text-xs text-brandColor hover:underline"
+                                @click="filters.types = []"
                             >
-                                <option value="yes">@lang('leadgreen::app.search.filters.website-yes')</option>
-                                <option value="all">@lang('leadgreen::app.search.filters.website-all')</option>
-                                <option value="no">@lang('leadgreen::app.search.filters.website-no')</option>
-                            </select>
+                                @lang('leadgreen::app.search.filters.types-clear')
+                            </button>
                         </div>
 
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.min-rating')</label>
-                            <select
-                                v-model.number="filters.minRating"
-                                class="custom-select rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                v-for="entry in availableTypes"
+                                :key="entry.type"
+                                type="button"
+                                class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition-colors"
+                                :class="isTypeSelected(entry.type)
+                                    ? 'bg-brandColor text-white ring-brandColor'
+                                    : 'bg-blue-50 text-blue-700 ring-blue-700/10 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-400/20'"
+                                @click="toggleType(entry.type)"
                             >
-                                <option :value="0">@lang('leadgreen::app.search.filters.any')</option>
-                                <option :value="3">★ 3+</option>
-                                <option :value="3.5">★ 3.5+</option>
-                                <option :value="4">★ 4+</option>
-                                <option :value="4.5">★ 4.5+</option>
-                            </select>
-                        </div>
-
-                        <div class="flex flex-col gap-1">
-                            <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.min-reviews')</label>
-                            <input
-                                type="number"
-                                v-model.number="filters.minReviews"
-                                min="0"
-                                placeholder="0"
-                                class="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            />
-                        </div>
-
-                        <div class="flex flex-col gap-1">
-                            <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
-                                <input type="checkbox" v-model="filters.hideDuplicates" />
-                                @lang('leadgreen::app.search.filters.hide-duplicates')
-                            </label>
-                        </div>
-
-                        <div class="ml-auto text-sm text-gray-500 dark:text-gray-400">
-                            @{{ filteredLeads.length }} / @{{ preview.leads.length }}
+                                @{{ entry.type }}
+                                <span :class="isTypeSelected(entry.type) ? 'text-white/80' : 'text-blue-700/60 dark:text-blue-400/60'">(@{{ entry.count }})</span>
+                            </button>
                         </div>
                     </div>
 
@@ -228,10 +307,25 @@
                             @lang('leadgreen::app.search.preview.nothing-selected')
                         </span>
 
-                        <button v-else type="button" class="primary-button" :disabled="importing" @click="confirmImport">
-                            <span v-if="! importing">@{{ importLabel }}</span>
-                            <span v-else>@lang('leadgreen::app.search.importing')</span>
-                        </button>
+                        <template v-else>
+                            <div class="flex flex-col items-end gap-1">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.preview.pipeline-label')</label>
+                                    <select
+                                        v-model.number="selectedPipelineId"
+                                        class="custom-select rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    >
+                                        <option v-for="pipeline in pipelines" :key="pipeline.id" :value="pipeline.id">@{{ pipeline.name }}</option>
+                                    </select>
+                                </div>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">@lang('leadgreen::app.search.preview.pipeline-hint')</span>
+                            </div>
+
+                            <button type="button" class="primary-button" :disabled="importing || ! selectedPipelineId" @click="confirmImport">
+                                <span v-if="! importing">@{{ importLabel }}</span>
+                                <span v-else>@lang('leadgreen::app.search.importing')</span>
+                            </button>
+                        </template>
                     </div>
                 </div>
 
@@ -363,6 +457,8 @@
                         preview: null,
                         selectedLead: null,
                         selectedIds: new Set(),
+                        pipelines: {!! $pipelines->values()->toJson() !!},
+                        selectedPipelineId: {{ optional($pipelines->firstWhere('is_default', true) ?? $pipelines->first())->id ?? 'null' }},
                         form: {
                             query: '',
                             limit: 100,
@@ -371,7 +467,11 @@
                             hasWebsite: 'yes',
                             minRating: 0,
                             minReviews: 0,
+                            hasPhone: false,
                             hideDuplicates: false,
+                            hideClosed: false,
+                            verifiedOnly: false,
+                            types: [],
                         },
                     };
                 },
@@ -387,10 +487,34 @@
                             if (this.filters.hasWebsite === 'no' && lead.has_website) return false;
                             if (this.filters.minRating && (! lead.rating || lead.rating < this.filters.minRating)) return false;
                             if (this.filters.minReviews && (lead.review_count || 0) < this.filters.minReviews) return false;
+                            if (this.filters.hasPhone && ! lead.phone_number) return false;
                             if (this.filters.hideDuplicates && lead.is_duplicate) return false;
+                            if (this.filters.hideClosed && lead.is_temporarily_closed) return false;
+                            if (this.filters.verifiedOnly && ! lead.verified) return false;
+                            if (this.filters.types.length && ! (lead.types || []).some((type) => this.filters.types.includes(type))) return false;
 
                             return true;
                         });
+                    },
+
+                    // Every distinct category string across the current result set, with
+                    // how many results carry it — built from real data, not a guessed list,
+                    // so it only ever offers categories that can actually match something.
+                    availableTypes() {
+                        if (! this.preview) {
+                            return [];
+                        }
+
+                        const counts = new Map();
+
+                        this.preview.leads.forEach((lead) => {
+                            (lead.types || []).forEach((type) => {
+                                counts.set(type, (counts.get(type) || 0) + 1);
+                            });
+                        });
+
+                        return Array.from(counts, ([type, count]) => ({ type, count }))
+                            .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
                     },
 
                     allSelectableSelected() {
@@ -443,6 +567,16 @@
                         this.selectedIds = next;
                     },
 
+                    isTypeSelected(type) {
+                        return this.filters.types.includes(type);
+                    },
+
+                    toggleType(type) {
+                        this.filters.types = this.isTypeSelected(type)
+                            ? this.filters.types.filter((t) => t !== type)
+                            : [...this.filters.types, type];
+                    },
+
                     openLead(lead) {
                         this.selectedLead = lead;
                     },
@@ -469,6 +603,9 @@
                         this.loading = true;
                         this.preview = null;
                         this.selectedIds = new Set();
+                        // A previous search's category picks won't line up with a new
+                        // query's results — start each search with no type restriction.
+                        this.filters.types = [];
 
                         this.$axios.post("{{ route('admin.leadgreen.search') }}", this.form)
                             .then((response) => {
@@ -486,7 +623,7 @@
                     },
 
                     confirmImport() {
-                        if (this.importing || ! this.preview || ! this.selectedIds.size) {
+                        if (this.importing || ! this.preview || ! this.selectedIds.size || ! this.selectedPipelineId) {
                             return;
                         }
 
@@ -495,6 +632,7 @@
                         this.$axios.post("{{ route('admin.leadgreen.import') }}", {
                             token: this.preview.token,
                             business_ids: Array.from(this.selectedIds),
+                            pipeline_id: this.selectedPipelineId,
                         })
                             .then((response) => {
                                 this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });
@@ -517,6 +655,7 @@
                     reset() {
                         this.preview = null;
                         this.selectedIds = new Set();
+                        this.filters.types = [];
                     },
                 },
             });

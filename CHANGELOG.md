@@ -2,6 +2,20 @@
 
 This changelog consists of the bug & security fixes and new features being included in the releases listed below.
 
+## **v2.2.7 (Upcoming)**
+
+* [fixed] Fixed Lead Green's pre-search filters (website presence, minimum rating, minimum review count, hide already-imported) only being visible after running a search. They now appear on the search form itself, before searching.
+
+* [fixed] Fixed the Lead Green results preview modal rendering without its backdrop, centering or two-column layout. The Admin package's Tailwind build only scanned its own views for class usage, so utility classes used exclusively by satellite packages (arbitrary values like `z-[9999]`, opacity modifiers like `bg-black/50`) were silently dropped from the compiled CSS. The build now scans every `packages/Webkul/*` package.
+
+* [feature] Added a "Filtros de busca" section to Lead Green's search form, grouping every filter that can be set before running a search (website presence, minimum rating, minimum reviews, has-phone, hide temporarily closed, verified only, hide already-imported) so all of it is visible and decided before clicking Buscar. Added a category filter as a clearly separate second step after the results come back — click-to-toggle chips built from the real Google Maps categories found in the current result set (e.g. "Escola pública", "Pré-escola", "Escola de idiomas"), each showing how many results carry it. Category can't be offered before searching: the provider has no type/category request parameter (confirmed against the live API — passing one is silently ignored), so which categories exist is only knowable from a real result set.
+
+* [feature] Lead Green's "Importar" now creates real CRM opportunities directly, in a pipeline chosen at import time, instead of leaving imported businesses stranded as prospects that needed a separate manual conversion. The pipeline is picked once for the whole batch and every opportunity lands at that pipeline's first stage. The one-at-a-time "Converter em lead" action (for prospects imported before this change) was upgraded the same way — a small dialog with a pipeline choice, replacing a plain confirmation popup that silently used whichever pipeline happened to be flagged default.
+
+* [fixed] Fixed Lead Green's "Converter em lead" and "Descartar" row actions never appearing for prospects that could actually still be converted or discarded. The status column's own cell renderer overwrote the row's status field with its badge HTML before the actions column read it, so the actions column's eligibility check compared against markup instead of the raw status and always failed.
+
+* [fixed] Fixed person creation crashing with an "Undefined array key" error whenever every phone number on the person filtered out as empty (e.g. converting a Lead Green prospect with no phone number, or saving a lead/contact form with a blank phone row). `PersonRepository` built the person's dedupe key by unconditionally reading the first remaining phone number after filtering, even when filtering left nothing.
+
 ## **v2.2.6 (19th of Aug 2026)**
 
 * [fixed] Added the missing Chinese translations for the users grid's associated group column.

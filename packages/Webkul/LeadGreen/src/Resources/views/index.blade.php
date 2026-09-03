@@ -3,6 +3,10 @@
         @lang('leadgreen::app.title')
     </x-slot>
 
+    @php
+        $pipelines = \Webkul\Lead\Models\PipelineProxy::modelClass()::orderBy('name')->get(['id', 'name', 'is_default']);
+    @endphp
+
     <v-leadgreen></v-leadgreen>
 
     @pushOnce('scripts')
@@ -91,6 +95,36 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Convert-to-opportunity modal — replaces a plain confirm() so the
+                     pipeline is always a deliberate choice, never a silent default. -->
+                <div v-if="convertId" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" @click.self="closeConvert">
+                    <div class="w-full max-w-sm rounded-lg bg-white shadow-xl dark:bg-gray-900">
+                        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">@lang('leadgreen::app.modal.convert-title')</h3>
+                            <button type="button" class="text-2xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" @click="closeConvert">&times;</button>
+                        </div>
+
+                        <div class="flex flex-col gap-3 p-6 text-sm">
+                            <p class="text-gray-600 dark:text-gray-300">@lang('leadgreen::app.modal.confirm-convert')</p>
+
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.modal.convert-pipeline')</label>
+                                <select
+                                    v-model.number="convertPipelineId"
+                                    class="custom-select rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                >
+                                    <option v-for="pipeline in pipelines" :key="pipeline.id" :value="pipeline.id">@{{ pipeline.name }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-2 border-t border-gray-200 px-6 py-4 dark:border-gray-800">
+                            <button type="button" class="secondary-button" @click="closeConvert">@lang('leadgreen::app.modal.cancel')</button>
+                            <button type="button" class="primary-button" :disabled="! convertPipelineId" @click="confirmConvert">@lang('leadgreen::app.modal.convert-btn')</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </script>
 
@@ -101,13 +135,16 @@
                 data() {
                     return {
                         selected: null,
+                        pipelines: {!! $pipelines->values()->toJson() !!},
+                        convertId: null,
+                        convertPipelineId: {{ optional($pipelines->firstWhere('is_default', true) ?? $pipelines->first())->id ?? 'null' }},
                     };
                 },
 
                 created() {
                     window.openLeadGreenModal = (id) => this.open(id);
 
-                    window.convertLead = (id) => this.convert(id);
+                    window.convertLead = (id) => this.openConvert(id);
 
                     window.discardLead = (id) => this.discard(id);
                 },
@@ -124,12 +161,22 @@
                         this.selected = null;
                     },
 
-                    convert(id) {
-                        if (! confirm("@lang('leadgreen::app.modal.confirm-convert')")) {
+                    openConvert(id) {
+                        this.convertId = id;
+                    },
+
+                    closeConvert() {
+                        this.convertId = null;
+                    },
+
+                    confirmConvert() {
+                        if (! this.convertId || ! this.convertPipelineId) {
                             return;
                         }
 
-                        this.$axios.get(`{{ url(config('app.admin_path').'/leadgreen/convert') }}/${id}`)
+                        this.$axios.get(`{{ url(config('app.admin_path').'/leadgreen/convert') }}/${this.convertId}`, {
+                            params: { pipeline_id: this.convertPipelineId },
+                        })
                             .then((response) => {
                                 this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });
 
@@ -137,6 +184,9 @@
                             })
                             .catch((error) => {
                                 this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.message ?? 'Error' });
+                            })
+                            .finally(() => {
+                                this.closeConvert();
                             });
                     },
 

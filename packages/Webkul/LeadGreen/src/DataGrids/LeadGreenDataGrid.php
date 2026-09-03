@@ -77,44 +77,44 @@ class LeadGreenDataGrid extends DataGrid
     public function prepareColumns()
     {
         $this->addColumn([
-            'index'      => 'name',
-            'label'      => trans('leadgreen::app.datagrid.name'),
-            'type'       => 'string',
+            'index' => 'name',
+            'label' => trans('leadgreen::app.datagrid.name'),
+            'type' => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
         ]);
 
         $this->addColumn([
-            'index'      => 'city',
-            'label'      => trans('leadgreen::app.datagrid.city'),
-            'type'       => 'string',
+            'index' => 'city',
+            'label' => trans('leadgreen::app.datagrid.city'),
+            'type' => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
         ]);
 
         $this->addColumn([
-            'index'      => 'state',
-            'label'      => trans('leadgreen::app.datagrid.state'),
-            'type'       => 'string',
+            'index' => 'state',
+            'label' => trans('leadgreen::app.datagrid.state'),
+            'type' => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
         ]);
 
         $this->addColumn([
-            'index'      => 'types',
-            'label'      => trans('leadgreen::app.datagrid.types'),
-            'type'       => 'string',
+            'index' => 'types',
+            'label' => trans('leadgreen::app.datagrid.types'),
+            'type' => 'string',
             'searchable' => false,
             'filterable' => true,
-            'sortable'   => false,
+            'sortable' => false,
             'visibility' => true,
-            'closure'    => function ($row) {
+            'closure' => function ($row) {
                 $types = json_decode($row->types, true);
 
                 if (! is_array($types) || empty($types)) {
@@ -136,14 +136,14 @@ class LeadGreenDataGrid extends DataGrid
         ]);
 
         $this->addColumn([
-            'index'      => 'rating',
-            'label'      => trans('leadgreen::app.datagrid.rating'),
-            'type'       => 'float',
+            'index' => 'rating',
+            'label' => trans('leadgreen::app.datagrid.rating'),
+            'type' => 'float',
             'searchable' => false,
             'filterable' => true,
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
-            'closure'    => function ($row) {
+            'closure' => function ($row) {
                 if (! $row->rating) {
                     return '-';
                 }
@@ -153,25 +153,25 @@ class LeadGreenDataGrid extends DataGrid
         ]);
 
         $this->addColumn([
-            'index'      => 'review_count',
-            'label'      => trans('leadgreen::app.datagrid.reviews'),
-            'type'       => 'integer',
+            'index' => 'review_count',
+            'label' => trans('leadgreen::app.datagrid.reviews'),
+            'type' => 'integer',
             'searchable' => false,
             'filterable' => true,
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
-            'closure'    => fn ($row) => $row->review_count ?? '-',
+            'closure' => fn ($row) => $row->review_count ?? '-',
         ]);
 
         $this->addColumn([
-            'index'      => 'website',
-            'label'      => trans('leadgreen::app.datagrid.website'),
-            'type'       => 'boolean',
+            'index' => 'website',
+            'label' => trans('leadgreen::app.datagrid.website'),
+            'type' => 'boolean',
             'searchable' => false,
             'filterable' => true,
-            'sortable'   => false,
+            'sortable' => false,
             'visibility' => true,
-            'closure'    => function ($row) {
+            'closure' => function ($row) {
                 if (! $row->website) {
                     return '-';
                 }
@@ -188,60 +188,66 @@ class LeadGreenDataGrid extends DataGrid
         ]);
 
         $this->addColumn([
-            'index'      => 'lead_status',
-            'label'      => trans('leadgreen::app.datagrid.status'),
-            'type'       => 'string',
+            'index' => 'lead_status',
+            'label' => trans('leadgreen::app.datagrid.status'),
+            'type' => 'string',
             'searchable' => false,
             'filterable' => true,
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
-            'closure'    => function ($row) {
+            'closure' => function ($row) {
                 $colors = [
-                    'novo'           => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400',
-                    'em_prospeccao'  => 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-                    'convertido'     => 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-                    'descartado'     => 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
+                    'novo' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400',
+                    'em_prospeccao' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+                    'convertido' => 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+                    'descartado' => 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
                     'reaproveitavel' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
                 ];
 
                 $labels = [
-                    'novo'           => 'Novo',
-                    'em_prospeccao'  => 'Em prospecção',
-                    'convertido'     => 'Convertido',
-                    'descartado'     => 'Descartado',
+                    'novo' => 'Novo',
+                    'em_prospeccao' => 'Em prospecção',
+                    'convertido' => 'Convertido',
+                    'descartado' => 'Descartado',
                     'reaproveitavel' => 'Reaproveitável',
                 ];
 
                 $color = $colors[$row->lead_status] ?? 'bg-gray-100 text-gray-800';
                 $label = $labels[$row->lead_status] ?? $row->lead_status;
 
+                // The datagrid engine overwrites $row->lead_status in place with
+                // whatever this closure returns, so the raw value is gone by the
+                // time a later column's closure (lead_actions, below) runs on the
+                // same row — stash it under another key so that check still works.
+                $row->raw_lead_status = $row->lead_status;
+
                 return '<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium '.$color.'">'.$label.'</span>';
             },
         ]);
 
         $this->addColumn([
-            'index'               => 'enrichment_status',
-            'label'               => trans('leadgreen::app.datagrid.enrichment'),
-            'type'                => 'string',
-            'searchable'          => false,
-            'filterable'          => true,
-            'filterable_type'     => 'dropdown',
-            'filterable_options'  => [
+            'index' => 'enrichment_status',
+            'label' => trans('leadgreen::app.datagrid.enrichment'),
+            'type' => 'string',
+            'searchable' => false,
+            'filterable' => true,
+            'filterable_type' => 'dropdown',
+            'filterable_options' => [
                 ['label' => trans('leadgreen::app.enrichment.status-enriched'), 'value' => 'enriched'],
                 ['label' => trans('leadgreen::app.enrichment.status-pending'), 'value' => 'pending'],
                 ['label' => trans('leadgreen::app.enrichment.status-empty'), 'value' => 'empty'],
                 ['label' => trans('leadgreen::app.enrichment.status-no-website'), 'value' => 'no_website'],
                 ['label' => trans('leadgreen::app.enrichment.status-failed'), 'value' => 'failed'],
             ],
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
-            'closure'    => function ($row) {
+            'closure' => function ($row) {
                 $map = [
-                    'enriched'   => ['bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400', trans('leadgreen::app.enrichment.status-enriched')],
-                    'pending'    => ['bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400', trans('leadgreen::app.enrichment.status-pending')],
-                    'empty'      => ['bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', trans('leadgreen::app.enrichment.status-empty')],
+                    'enriched' => ['bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400', trans('leadgreen::app.enrichment.status-enriched')],
+                    'pending' => ['bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400', trans('leadgreen::app.enrichment.status-pending')],
+                    'empty' => ['bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', trans('leadgreen::app.enrichment.status-empty')],
                     'no_website' => ['bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', trans('leadgreen::app.enrichment.status-no-website')],
-                    'failed'     => ['bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400', trans('leadgreen::app.enrichment.status-failed')],
+                    'failed' => ['bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400', trans('leadgreen::app.enrichment.status-failed')],
                 ];
 
                 [$color, $label] = $map[$row->enrichment_status] ?? ['bg-amber-100 text-amber-800', trans('leadgreen::app.enrichment.status-pending')];
@@ -271,19 +277,19 @@ class LeadGreenDataGrid extends DataGrid
         ]);
 
         $this->addColumn([
-            'index'               => 'has_privacy_policy',
-            'label'               => trans('leadgreen::app.datagrid.privacy'),
-            'type'                => 'boolean',
-            'searchable'          => false,
-            'filterable'          => true,
-            'filterable_type'     => 'dropdown',
-            'filterable_options'  => [
+            'index' => 'has_privacy_policy',
+            'label' => trans('leadgreen::app.datagrid.privacy'),
+            'type' => 'boolean',
+            'searchable' => false,
+            'filterable' => true,
+            'filterable_type' => 'dropdown',
+            'filterable_options' => [
                 ['label' => trans('leadgreen::app.enrichment.yes'), 'value' => 1],
                 ['label' => trans('leadgreen::app.enrichment.no'), 'value' => 0],
             ],
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
-            'closure'    => function ($row) {
+            'closure' => function ($row) {
                 if ($row->has_privacy_policy) {
                     return '<span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/20 dark:text-green-400">✓ '.trans('leadgreen::app.enrichment.yes').'</span>';
                 }
@@ -293,19 +299,19 @@ class LeadGreenDataGrid extends DataGrid
         ]);
 
         $this->addColumn([
-            'index'               => 'has_dpo',
-            'label'               => trans('leadgreen::app.datagrid.dpo'),
-            'type'                => 'boolean',
-            'searchable'          => false,
-            'filterable'          => true,
-            'filterable_type'     => 'dropdown',
-            'filterable_options'  => [
+            'index' => 'has_dpo',
+            'label' => trans('leadgreen::app.datagrid.dpo'),
+            'type' => 'boolean',
+            'searchable' => false,
+            'filterable' => true,
+            'filterable_type' => 'dropdown',
+            'filterable_options' => [
                 ['label' => trans('leadgreen::app.enrichment.yes'), 'value' => 1],
                 ['label' => trans('leadgreen::app.enrichment.no'), 'value' => 0],
             ],
-            'sortable'   => true,
+            'sortable' => true,
             'visibility' => true,
-            'closure'    => function ($row) {
+            'closure' => function ($row) {
                 if (! $row->has_dpo) {
                     return '<span class="text-xs text-gray-400">—</span>';
                 }
@@ -325,17 +331,17 @@ class LeadGreenDataGrid extends DataGrid
         ]);
 
         $this->addColumn([
-            'index'      => 'lead_actions',
-            'label'      => trans('leadgreen::app.datagrid.actions'),
-            'type'       => 'string',
+            'index' => 'lead_actions',
+            'label' => trans('leadgreen::app.datagrid.actions'),
+            'type' => 'string',
             'searchable' => false,
             'filterable' => false,
-            'sortable'   => false,
+            'sortable' => false,
             'visibility' => true,
-            'closure'    => function ($row) {
+            'closure' => function ($row) {
                 $actions = '<button onclick="openLeadGreenModal('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.view').'"><span class="icon-eye"></span></button>';
 
-                if (in_array($row->lead_status, ['novo', 'reaproveitavel'])) {
+                if (in_array($row->raw_lead_status ?? $row->lead_status, ['novo', 'reaproveitavel'])) {
                     $actions .= '<button onclick="window.convertLead('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.convert').'"><span class="icon-add"></span></button>';
                     $actions .= '<button onclick="window.discardLead('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.discard').'"><span class="icon-error"></span></button>';
                 }

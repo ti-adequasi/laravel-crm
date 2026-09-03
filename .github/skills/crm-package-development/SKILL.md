@@ -192,6 +192,43 @@ and say so explicitly in the PR description.
 
 ---
 
+## A Package's Tailwind Classes Need Admin's Build to Scan Them
+
+The compiled admin CSS (`public/admin/build/`) comes from
+`packages/Webkul/Admin`'s own Vite/Tailwind build — a **separate** build
+context from the repo-root one (`public/build/`, used by self-contained
+packages like `Sandbox`). Whether your package's Blade markup renders a full
+page (`LeadGreen`'s search screen) or an injected partial (mechanism #3
+above, e.g. `LeadEnrichment`'s button), its classes only make it into the
+compiled CSS if `packages/Webkul/Admin/tailwind.config.js`'s `content` array
+scans your package's files. Confirm it covers every package, not just
+Admin's own views:
+
+```js
+content: [
+    "./src/Resources/**/*.blade.php",
+    "./src/Resources/**/*.js",
+    "../*/src/Resources/**/*.blade.php",
+    "../*/src/Resources/**/*.js",
+],
+```
+
+If it doesn't, any class unique to your package — an arbitrary value like
+`z-[9999]`, an opacity modifier like `bg-black/50`, anything Admin's own
+views don't happen to also use — silently never gets generated. This fails
+**invisibly**: no build error, no console error, nothing in the code. It only
+shows up as broken layout in the browser (missing backdrop, wrong stacking
+order, elements in the wrong place), so a code review or an HTTP-only smoke
+test (`curl`/`wget`) won't catch it — only actually looking at the rendered
+page will. Real-world example: a modal with `z-[9999]` and `bg-black/50`
+rendered with `z-index: auto` and a transparent backdrop until the `content`
+array above was widened and both `packages/Webkul/Admin`'s **own** build was
+rerun (`cd packages/Webkul/Admin && npm install && npm run build` —
+`npm run build` at the repo root only rebuilds `public/build/`, a different
+Vite context entirely) and the browser was checked again.
+
+---
+
 ## A Custom Attribute You're Relying On May Not Exist
 
 Don't assume an entity attribute exists just because it's a natural fit

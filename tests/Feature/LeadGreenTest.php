@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Webkul\Contact\Models\Organization;
 use Webkul\Contact\Models\Person;
 use Webkul\Lead\Models\Lead;
+use Webkul\Lead\Models\Pipeline;
 use Webkul\LeadGreen\Models\LeadGreen;
 use Webkul\LeadGreen\Models\LeadGreenProxy;
 use Webkul\LeadGreen\Services\CnpjService;
@@ -20,16 +21,16 @@ uses(DatabaseTransactions::class);
 function makeProspect(array $overrides = []): LeadGreen
 {
     return LeadGreen::create(array_merge([
-        'business_id'  => 'test-'.uniqid(),
-        'name'         => 'Padaria Pest LTDA',
+        'business_id' => 'test-'.uniqid(),
+        'name' => 'Padaria Pest LTDA',
         'phone_number' => '+5511999998888',
-        'website'      => 'https://example.com',
+        'website' => 'https://example.com',
         'full_address' => 'Rua Teste, 123 - Osasco - SP, 06010-000',
-        'city'         => 'Osasco',
-        'state'        => 'SP',
-        'rating'       => 4.5,
+        'city' => 'Osasco',
+        'state' => 'SP',
+        'rating' => 4.5,
         'review_count' => 42,
-        'lead_status'  => 'novo',
+        'lead_status' => 'novo',
     ], $overrides));
 }
 
@@ -127,15 +128,56 @@ it('imports only the selected business_ids, leaving the rest of the batch untouc
     // to import it (no page for the CRM to reach), it just counts as skipped.
     $import = test()->actingAs(getDefaultAdmin())
         ->post(route('admin.leadgreen.import'), [
-            'token'        => $search['token'],
+            'token' => $search['token'],
             'business_ids' => ['pick-me', 'no-site-1'],
         ])
         ->assertOk()
         ->json();
 
-    expect($import['stats'])->toBe(['found' => 2, 'inserted' => 1, 'skipped' => 1]);
+    expect($import['stats'])->toBe(['found' => 2, 'inserted' => 1, 'skipped' => 1, 'converted' => 0]);
     expect(LeadGreen::where('business_id', 'pick-me')->exists())->toBeTrue();
     expect(LeadGreen::where('business_id', 'skip-me')->exists())->toBeFalse();
+
+    // No pipeline_id was sent — matches the prospect-only behaviour from
+    // before this feature existed, nothing gets auto-converted.
+    expect(LeadGreen::where('business_id', 'pick-me')->first()->lead_status)->toBe('novo');
+});
+
+it('imports and immediately converts into a real opportunity when a pipeline is chosen', function () {
+    config(['services.rapidapi_maps.key' => 'test-key']);
+
+    $pipeline = Pipeline::first();
+
+    Http::fake([
+        'maps-data.p.rapidapi.com/*' => Http::response([
+            'data' => [
+                ['business_id' => 'go-straight-1', 'name' => 'Prospected And Ready', 'website' => 'https://ready.example.com'],
+            ],
+        ], 200),
+    ]);
+
+    $search = test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadgreen.search'), ['query' => 'Padarias em Osasco - SP'])
+        ->json();
+
+    $import = test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadgreen.import'), [
+            'token' => $search['token'],
+            'business_ids' => ['go-straight-1'],
+            'pipeline_id' => $pipeline->id,
+        ])
+        ->assertOk()
+        ->json();
+
+    expect($import['stats'])->toBe(['found' => 1, 'inserted' => 1, 'skipped' => 0, 'converted' => 1]);
+
+    $prospect = LeadGreen::where('business_id', 'go-straight-1')->first();
+    expect($prospect->lead_status)->toBe('convertido');
+    expect($prospect->opportunity_id)->not->toBeNull();
+
+    $lead = Lead::find($prospect->opportunity_id);
+    expect($lead->lead_pipeline_id)->toBe($pipeline->id);
+    expect($lead->lead_pipeline_stage_id)->toBe($pipeline->stages()->orderBy('sort_order')->first()->id);
 });
 
 it('requires at least one business_id to import', function () {
@@ -177,6 +219,22 @@ it('converts a prospect into a CRM lead, linked through a Person to an Organizat
     $organization = Organization::find($person->organization_id);
     expect($organization)->not->toBeNull();
     expect($organization->name)->toBe('Padaria Pest LTDA');
+});
+
+it('converts into a specific pipeline and stage when one is chosen, not just the default', function () {
+    $otherPipeline = Pipeline::create(['name' => 'Prospecção Fria', 'is_default' => false, 'rotten_days' => 30]);
+    $otherStage = $otherPipeline->stages()->create(['name' => 'Novo Contato', 'code' => 'novo-contato', 'sort_order' => 1]);
+
+    $prospect = makeProspect();
+
+    test()->actingAs(getDefaultAdmin())
+        ->get(route('admin.leadgreen.convert', $prospect->id).'?pipeline_id='.$otherPipeline->id)
+        ->assertOk();
+
+    $lead = Lead::find($prospect->refresh()->opportunity_id);
+
+    expect($lead->lead_pipeline_id)->toBe($otherPipeline->id);
+    expect($lead->lead_pipeline_stage_id)->toBe($otherStage->id);
 });
 
 it('refuses to convert an already-converted prospect', function () {
