@@ -52,6 +52,7 @@ class LeadGreenDataGrid extends DataGrid
                 'lead_green_prospects.used_at',
                 'lead_green_prospects.used_by',
                 'lead_green_prospects.full_address',
+                'lead_green_prospects.opportunity_id',
                 'users.name as used_by_name'
             );
 
@@ -76,6 +77,12 @@ class LeadGreenDataGrid extends DataGrid
      */
     public function prepareColumns()
     {
+        // Configuration > Lead Green > Enrichment — off for segments where a
+        // privacy policy / DPO isn't a meaningful prospecting signal. Columns
+        // stay hidden rather than removed so a re-enable doesn't lose data
+        // already gathered while it was on.
+        $detectLgpd = (bool) core()->getConfigData('lead_green.settings.enrichment.detect_lgpd_signals');
+
         $this->addColumn([
             'index' => 'name',
             'label' => trans('leadgreen::app.datagrid.name'),
@@ -221,7 +228,16 @@ class LeadGreenDataGrid extends DataGrid
                 // same row — stash it under another key so that check still works.
                 $row->raw_lead_status = $row->lead_status;
 
-                return '<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium '.$color.'">'.$label.'</span>';
+                $badge = '<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium '.$color.'">'.$label.'</span>';
+
+                // A converted prospect's whole reason for being visited again is
+                // to jump to what it became — make the badge itself the link,
+                // right where the eye is already looking.
+                if ($row->raw_lead_status === 'convertido' && $row->opportunity_id) {
+                    return '<a href="'.route('admin.leads.view', $row->opportunity_id).'" class="hover:opacity-75" title="'.trans('leadgreen::app.datagrid.view-opportunity').'">'.$badge.'</a>';
+                }
+
+                return $badge;
             },
         ]);
 
@@ -288,7 +304,7 @@ class LeadGreenDataGrid extends DataGrid
                 ['label' => trans('leadgreen::app.enrichment.no'), 'value' => 0],
             ],
             'sortable' => true,
-            'visibility' => true,
+            'visibility' => $detectLgpd,
             'closure' => function ($row) {
                 if ($row->has_privacy_policy) {
                     return '<span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/20 dark:text-green-400">✓ '.trans('leadgreen::app.enrichment.yes').'</span>';
@@ -310,7 +326,7 @@ class LeadGreenDataGrid extends DataGrid
                 ['label' => trans('leadgreen::app.enrichment.no'), 'value' => 0],
             ],
             'sortable' => true,
-            'visibility' => true,
+            'visibility' => $detectLgpd,
             'closure' => function ($row) {
                 if (! $row->has_dpo) {
                     return '<span class="text-xs text-gray-400">—</span>';
@@ -341,9 +357,15 @@ class LeadGreenDataGrid extends DataGrid
             'closure' => function ($row) {
                 $actions = '<button onclick="openLeadGreenModal('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.view').'"><span class="icon-eye"></span></button>';
 
-                if (in_array($row->raw_lead_status ?? $row->lead_status, ['novo', 'reaproveitavel'])) {
+                $status = $row->raw_lead_status ?? $row->lead_status;
+
+                if (in_array($status, ['novo', 'reaproveitavel'])) {
                     $actions .= '<button onclick="window.convertLead('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.convert').'"><span class="icon-add"></span></button>';
                     $actions .= '<button onclick="window.discardLead('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.discard').'"><span class="icon-error"></span></button>';
+                } elseif ($status === 'convertido' && $row->opportunity_id) {
+                    // Already converted — the only thing left to do from here
+                    // is go see what it became.
+                    $actions .= '<a href="'.route('admin.leads.view', $row->opportunity_id).'" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800 inline-block" title="'.trans('leadgreen::app.datagrid.view-opportunity').'"><span class="icon-forward"></span></a>';
                 }
 
                 return $actions;

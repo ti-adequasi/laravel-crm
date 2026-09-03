@@ -37,6 +37,14 @@ an ops-managed deploy):
 - **CNPJá commercial API key** — optional. BrasilAPI (free) and CNPJá Open
   (free, rate-limited) are tried first; the paid commercial tier is only
   used as a last resort and capped at a configurable daily credit count.
+- **Detectar política de privacidade e DPO (LGPD)** — on by default; turn off
+  for segments where a privacy policy / Data Protection Officer isn't a
+  meaningful prospecting signal. Read by `LeadEnrichmentService::enrichFromWebsite()`,
+  shared by both Lead Green's own enrichment and the standalone
+  `LeadEnrichment` "Enrich" button on a regular CRM lead — one setting covers
+  both. Off skips the extra HTTP fetch of the privacy-policy page entirely,
+  not just the resulting fields; the "Política de privacidade" / "DPO" grid
+  columns hide accordingly. Doesn't touch data already gathered while it was on.
 
 ## A known flake in the search
 

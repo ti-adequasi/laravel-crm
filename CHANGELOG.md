@@ -16,6 +16,10 @@ This changelog consists of the bug & security fixes and new features being inclu
 
 * [fixed] Fixed person creation crashing with an "Undefined array key" error whenever every phone number on the person filtered out as empty (e.g. converting a Lead Green prospect with no phone number, or saving a lead/contact form with a blank phone row). `PersonRepository` built the person's dedupe key by unconditionally reading the first remaining phone number after filtering, even when filtering left nothing.
 
+* [fixed] Fixed an already-converted Lead Green prospect having no way back to the opportunity it became — only a "Visualizar" action that showed the original scraped data, with no link out. The status badge and a new row action now link straight to the opportunity, and the detail modal opens with a banner ("Já convertido em oportunidade") linking there too.
+
+* [feature] Added a "Detectar política de privacidade e DPO (LGPD)" toggle under Configuration > Lead Green > Enrichment, on by default. Lead Green's LGPD-specific enrichment (privacy-policy detection, DPO/Encarregado lookup) was a hardcoded assumption that only fits one kind of prospecting client; it's now optional, for using the CRM across other segments too. Turning it off skips the extra page fetch entirely, not just the resulting fields, and hides the corresponding grid columns. The same toggle also governs the standalone `LeadEnrichment` "Enrich" button on a regular CRM lead, since both share the same enrichment service.
+
 ## **v2.2.6 (19th of Aug 2026)**
 
 * [fixed] Added the missing Chinese translations for the users grid's associated group column.

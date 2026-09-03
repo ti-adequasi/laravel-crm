@@ -10,6 +10,7 @@ use Webkul\Lead\Models\Pipeline;
 use Webkul\LeadGreen\Models\LeadGreen;
 use Webkul\LeadGreen\Models\LeadGreenProxy;
 use Webkul\LeadGreen\Services\CnpjService;
+use Webkul\LeadGreen\Services\LeadEnrichmentService;
 
 /**
  * LeadGreen ports Google Maps prospecting + website/CNPJ enrichment from
@@ -42,6 +43,7 @@ it('registers acl, menu, and settings entries', function () {
     expect(collect(config('acl'))->pluck('key'))->toContain('lead_green');
     expect(collect(config('menu.admin'))->pluck('key'))->toContain('lead_green');
     expect(collect(config('core_config'))->pluck('key'))->toContain('lead_green.settings.api_keys');
+    expect(collect(config('core_config'))->pluck('key'))->toContain('lead_green.settings.enrichment');
 });
 
 it('redirects guests away from the leadgreen pages', function () {
@@ -265,4 +267,55 @@ it('validates a CNPJ by its check digits', function () {
     expect($service->isValidCnpj('11222333000181'))->toBeTrue();
     expect($service->isValidCnpj('11111111111111'))->toBeFalse();
     expect($service->isValidCnpj('123'))->toBeFalse();
+});
+
+it('detects privacy policy / DPO signals by default, and skips the extra fetch entirely once disabled', function () {
+    Http::fake([
+        'empresa-teste.com.br/privacidade' => Http::response('<html>Encarregado de Dados: joao@empresa-teste.com.br</html>', 200),
+        'empresa-teste.com.br/*' => Http::response('<html><a href="/privacidade">Política de Privacidade</a></html>', 200),
+    ]);
+
+    $service = app(LeadEnrichmentService::class);
+
+    $enabled = $service->enrichFromWebsite('https://empresa-teste.com.br');
+
+    expect($enabled['has_privacy_policy'])->toBeTrue();
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/privacidade'));
+
+    DB::table('core_config')->updateOrInsert(
+        ['code' => 'lead_green.settings.enrichment.detect_lgpd_signals'],
+        ['value' => 0]
+    );
+
+    Http::fake([
+        'empresa-teste.com.br/privacidade' => Http::response('<html>Encarregado de Dados: joao@empresa-teste.com.br</html>', 200),
+        'empresa-teste.com.br/*' => Http::response('<html><a href="/privacidade">Política de Privacidade</a></html>', 200),
+    ]);
+
+    $disabled = $service->enrichFromWebsite('https://empresa-teste.com.br');
+
+    expect($disabled['has_privacy_policy'])->toBeFalse();
+    expect($disabled['has_dpo'])->toBeFalse();
+    // Not just "ignored" — the privacy page is never even requested.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/privacidade'));
+});
+
+it('hides the privacy policy / DPO grid columns once LGPD detection is disabled', function () {
+    $columns = fn () => test()->actingAs(getDefaultAdmin())
+        ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+        ->getJson(route('admin.leadgreen.index'))
+        ->json('columns');
+
+    $visible = fn ($columns, $index) => collect($columns)->firstWhere('index', $index)['visibility'];
+
+    expect($visible($columns(), 'has_privacy_policy'))->toBeTrue();
+    expect($visible($columns(), 'has_dpo'))->toBeTrue();
+
+    DB::table('core_config')->updateOrInsert(
+        ['code' => 'lead_green.settings.enrichment.detect_lgpd_signals'],
+        ['value' => 0]
+    );
+
+    expect($visible($columns(), 'has_privacy_policy'))->toBeFalse();
+    expect($visible($columns(), 'has_dpo'))->toBeFalse();
 });

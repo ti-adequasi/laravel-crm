@@ -10,15 +10,11 @@ class LeadEnrichmentService
 {
     /**
      * Common contact pages to probe when the homepage has no e-mail.
-     *
-     * @var array
      */
     protected array $contactPaths = ['contato', 'contact', 'fale-conosco', 'sobre', 'quem-somos'];
 
     /**
      * Generic e-mail domains that should not be treated as the company domain.
-     *
-     * @var array
      */
     protected array $genericMailDomains = [
         'gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'yahoo.com.br',
@@ -28,8 +24,6 @@ class LeadEnrichmentService
     /**
      * Hosts that are contact links / social profiles / maps — not a company site.
      * The privacy policy / DPO of these belongs to the platform, not the lead.
-     *
-     * @var array
      */
     protected array $nonCompanyHosts = [
         'wa.me', 'whatsapp.com', 'api.whatsapp.com', 'chat.whatsapp.com',
@@ -41,8 +35,6 @@ class LeadEnrichmentService
 
     /**
      * Link-aggregator hosts (the company's real site is usually linked inside).
-     *
-     * @var array
      */
     protected array $aggregatorHosts = [
         'linktr.ee', 'linktree.com', 'bio.link', 'beacons.ai', 'beacons.page',
@@ -54,28 +46,33 @@ class LeadEnrichmentService
     /**
      * Enrich a single lead from its website.
      *
-     * @param  string  $website
-     * @return array  enrichment fields (email, socials, whatsapp, score, status)
+     * @return array enrichment fields (email, socials, whatsapp, score, status)
      */
     public function enrichFromWebsite(string $website): array
     {
+        // Off by default for segments where a privacy policy / Data Protection
+        // Officer isn't a meaningful prospecting signal — see Configuration >
+        // Lead Green > Enrichment. Shared by both LeadGreen and the standalone
+        // LeadEnrichment "Enrich" button, so this one setting covers both.
+        $detectLgpd = (bool) core()->getConfigData('lead_green.settings.enrichment.detect_lgpd_signals');
+
         $result = [
-            'email'              => null,
-            'email_source'       => null,
-            'email_quality'      => null,
-            'emails_found'       => [],
-            'instagram'          => null,
-            'facebook'           => null,
-            'linkedin'           => null,
-            'whatsapp'           => null,
+            'email' => null,
+            'email_source' => null,
+            'email_quality' => null,
+            'emails_found' => [],
+            'instagram' => null,
+            'facebook' => null,
+            'linkedin' => null,
+            'whatsapp' => null,
             'has_privacy_policy' => false,
             'privacy_policy_url' => null,
-            'has_dpo'            => false,
-            'dpo_name'          => null,
-            'dpo_email'         => null,
-            'cnpj'              => null,
+            'has_dpo' => false,
+            'dpo_name' => null,
+            'dpo_email' => null,
+            'cnpj' => null,
             'enrichment_status' => 'failed',
-            'enrichment_score'  => 0,
+            'enrichment_score' => 0,
         ];
 
         $base = $this->normalizeUrl($website);
@@ -88,7 +85,7 @@ class LeadEnrichmentService
 
         $host = parse_url($base, PHP_URL_HOST) ?: '';
 
-        $emails  = [];
+        $emails = [];
         $socials = ['instagram' => null, 'facebook' => null, 'linkedin' => null];
         $whatsapp = null;
         $homeHtml = null;
@@ -100,7 +97,7 @@ class LeadEnrichmentService
         // NOT scrape it — its privacy policy / DPO belongs to the platform.
         if ($this->hostMatches($host, $this->nonCompanyHosts)) {
             $result = array_merge($result, $this->contactFromUrl($base));
-            $result['enrichment_score']  = $this->score($result);
+            $result['enrichment_score'] = $this->score($result);
             $result['enrichment_status'] = $result['enrichment_score'] > 0 ? 'enriched' : 'empty';
 
             return $result;
@@ -116,20 +113,20 @@ class LeadEnrichmentService
                 return $result;
             }
 
-            $whatsapp            = $this->extractWhatsapp($aggHtml);
+            $whatsapp = $this->extractWhatsapp($aggHtml);
             $socials['instagram'] = $this->extractSocial($aggHtml, 'instagram');
-            $socials['facebook']  = $this->extractSocial($aggHtml, 'facebook');
-            $socials['linkedin']  = $this->extractLinkedin($aggHtml);
+            $socials['facebook'] = $this->extractSocial($aggHtml, 'facebook');
+            $socials['linkedin'] = $this->extractLinkedin($aggHtml);
 
             $companyUrl = $this->findCompanyLink($aggHtml, $base);
 
             if (! $companyUrl) {
                 // No real company site behind it: keep the contacts, skip privacy/DPO.
                 $result['instagram'] = $socials['instagram'];
-                $result['facebook']  = $socials['facebook'];
-                $result['linkedin']  = $socials['linkedin'];
-                $result['whatsapp']  = $whatsapp;
-                $result['enrichment_score']  = $this->score($result);
+                $result['facebook'] = $socials['facebook'];
+                $result['linkedin'] = $socials['linkedin'];
+                $result['whatsapp'] = $whatsapp;
+                $result['enrichment_score'] = $this->score($result);
                 $result['enrichment_status'] = $result['enrichment_score'] > 0 ? 'enriched' : 'empty';
 
                 return $result;
@@ -151,9 +148,9 @@ class LeadEnrichmentService
             $alt = $this->toggleWww($base);
 
             if ($alt && ($altHtml = $this->fetch($alt)) !== null) {
-                $base     = $alt;
-                $host     = parse_url($base, PHP_URL_HOST) ?: $host;
-                $domain   = $this->rootDomain($host);
+                $base = $alt;
+                $host = parse_url($base, PHP_URL_HOST) ?: $host;
+                $domain = $this->rootDomain($host);
                 $homeHtml = $altHtml;
             }
         }
@@ -167,7 +164,7 @@ class LeadEnrichmentService
 
         // Fall back to common guessed contact paths.
         $urls = array_merge($urls, array_map(
-            fn ($p) => rtrim($base, '/') . '/' . $p,
+            fn ($p) => rtrim($base, '/').'/'.$p,
             $this->contactPaths
         ));
 
@@ -213,7 +210,7 @@ class LeadEnrichmentService
             }
 
             // Look for a privacy policy link on any visited page.
-            if (! $privacyUrl) {
+            if ($detectLgpd && ! $privacyUrl) {
                 $privacyUrl = $this->extractPrivacyLink($html, $base);
             }
 
@@ -226,24 +223,27 @@ class LeadEnrichmentService
         }
 
         $emails = array_values(array_unique($emails));
-        $email  = $this->pickBestEmail($emails, $domain);
+        $email = $this->pickBestEmail($emails, $domain);
 
-        $result['email']         = $email;
-        $result['email_source']  = $email ? 'site' : null;
+        $result['email'] = $email;
+        $result['email_source'] = $email ? 'site' : null;
         $result['email_quality'] = $email ? $this->classifyEmail($email, $domain) : null;
-        $result['emails_found']  = $this->rankEmails($emails, $domain);
-        $result['instagram']    = $socials['instagram'];
-        $result['facebook']     = $socials['facebook'];
-        $result['linkedin']     = $socials['linkedin'];
-        $result['whatsapp']     = $whatsapp;
-        $result['cnpj']         = $cnpj;
+        $result['emails_found'] = $this->rankEmails($emails, $domain);
+        $result['instagram'] = $socials['instagram'];
+        $result['facebook'] = $socials['facebook'];
+        $result['linkedin'] = $socials['linkedin'];
+        $result['whatsapp'] = $whatsapp;
+        $result['cnpj'] = $cnpj;
 
-        // Privacy policy & DPO (Encarregado LGPD) analysis.
+        // Privacy policy & DPO (Encarregado LGPD) analysis. $privacyUrl is
+        // never set above when $detectLgpd is off, so everything below
+        // (including the extra fetch to analyze the policy page for a DPO)
+        // naturally stays false/null/skipped without a separate check here.
         $result['has_privacy_policy'] = ! empty($privacyUrl);
         $result['privacy_policy_url'] = $privacyUrl;
-        $result['has_dpo']            = false;
-        $result['dpo_name']           = null;
-        $result['dpo_email']          = null;
+        $result['has_dpo'] = false;
+        $result['dpo_name'] = null;
+        $result['dpo_email'] = null;
 
         if ($privacyUrl) {
             $privacyHtml = $this->fetch($privacyUrl);
@@ -251,13 +251,13 @@ class LeadEnrichmentService
             if ($privacyHtml !== null) {
                 $dpo = $this->analyzePrivacyPolicy($privacyHtml, $domain);
 
-                $result['has_dpo']   = $dpo['has_dpo'];
-                $result['dpo_name']  = $dpo['dpo_name'];
+                $result['has_dpo'] = $dpo['has_dpo'];
+                $result['dpo_name'] = $dpo['dpo_name'];
                 $result['dpo_email'] = $dpo['dpo_email'];
             }
         }
 
-        $result['enrichment_score']  = $this->score($result);
+        $result['enrichment_score'] = $this->score($result);
         $result['enrichment_status'] = $result['enrichment_score'] > 0 ? 'enriched' : 'empty';
 
         return $result;
@@ -309,9 +309,9 @@ class LeadEnrichmentService
         $name = '([\p{Lu}][\p{L}\'\-]+(?:\s+(?:d[aeo]s?\s+)?[\p{Lu}][\p{L}\'\-]+){1,4})';
 
         $namePatterns = [
-            '/(?i:nome\s+do[\s\(]*encarregad[oa][\s\)]*)\s*[:\-–]\s*' . $name . '/u',
-            '/(?i:encarregad[oa](?:\s+(?:de\s+(?:prote[cç][aã]o\s+de\s+)?dados|pelo\s+tratamento\s+de\s+dados\s+pessoais))?(?:\s*\(?\s*dpo\s*\)?)?)\s*[:\-–]\s*' . $name . '/u',
-            '/(?i:data\s+protection\s+officer|\bdpo\b)\s*[:\-–]\s*' . $name . '/u',
+            '/(?i:nome\s+do[\s\(]*encarregad[oa][\s\)]*)\s*[:\-–]\s*'.$name.'/u',
+            '/(?i:encarregad[oa](?:\s+(?:de\s+(?:prote[cç][aã]o\s+de\s+)?dados|pelo\s+tratamento\s+de\s+dados\s+pessoais))?(?:\s*\(?\s*dpo\s*\)?)?)\s*[:\-–]\s*'.$name.'/u',
+            '/(?i:data\s+protection\s+officer|\bdpo\b)\s*[:\-–]\s*'.$name.'/u',
         ];
 
         foreach ($namePatterns as $pattern) {
@@ -376,7 +376,7 @@ class LeadEnrichmentService
         // 3) Fall back to a company-domain e-mail if present.
         if ($domain) {
             foreach ($emails as $email) {
-                if (str_ends_with($email, '@' . $domain)) {
+                if (str_ends_with($email, '@'.$domain)) {
                     return $email;
                 }
             }
@@ -399,16 +399,16 @@ class LeadEnrichmentService
         if (str_starts_with($href, '//')) {
             $scheme = parse_url($base, PHP_URL_SCHEME) ?: 'http';
 
-            return $scheme . ':' . $href;
+            return $scheme.':'.$href;
         }
 
-        $root = rtrim(parse_url($base, PHP_URL_SCHEME) . '://' . parse_url($base, PHP_URL_HOST), '/');
+        $root = rtrim(parse_url($base, PHP_URL_SCHEME).'://'.parse_url($base, PHP_URL_HOST), '/');
 
         if (str_starts_with($href, '/')) {
-            return $root . $href;
+            return $root.$href;
         }
 
-        return $root . '/' . ltrim($href, '/');
+        return $root.'/'.ltrim($href, '/');
     }
 
     /**
@@ -420,7 +420,7 @@ class LeadEnrichmentService
             $response = Http::timeout(15)
                 ->withHeaders([
                     'User-Agent' => 'Mozilla/5.0 (compatible; AdequaCRM-LeadEnricher/1.0)',
-                    'Accept'     => 'text/html,application/xhtml+xml',
+                    'Accept' => 'text/html,application/xhtml+xml',
                 ])
                 ->get($url);
 
@@ -428,7 +428,7 @@ class LeadEnrichmentService
                 return $response->body();
             }
         } catch (\Throwable $e) {
-            Log::info('LeadEnrichment fetch failed: ' . $url . ' - ' . $e->getMessage());
+            Log::info('LeadEnrichment fetch failed: '.$url.' - '.$e->getMessage());
         }
 
         return null;
@@ -498,7 +498,7 @@ class LeadEnrichmentService
     /**
      * Rank all e-mails best-first by their qualitative tier.
      *
-     * @return array  ordered list of e-mails
+     * @return array ordered list of e-mails
      */
     protected function rankEmails(array $emails, string $domain): array
     {
@@ -510,12 +510,12 @@ class LeadEnrichmentService
 
         // Lower weight = better.
         $weights = [
-            'role'         => 0,
-            'person'       => 1,
+            'role' => 0,
+            'person' => 1,
             'domain_other' => 2,
-            'catchall'     => 3,
-            'generic'      => 4,
-            'other'        => 5,
+            'catchall' => 3,
+            'generic' => 4,
+            'other' => 5,
         ];
 
         usort($emails, function ($a, $b) use ($domain, $weights) {
@@ -550,7 +550,7 @@ class LeadEnrichmentService
             'recepcao', 'orcamento', 'orcamentos', 'suporte', 'info', 'contabilidade',
         ];
 
-        $onDomain = $domain && ($emailDomain === $domain || str_ends_with($emailDomain, '.' . $domain));
+        $onDomain = $domain && ($emailDomain === $domain || str_ends_with($emailDomain, '.'.$domain));
 
         if (in_array($local, $roleLocals, true)) {
             return 'role';
@@ -581,7 +581,7 @@ class LeadEnrichmentService
     /**
      * Discover internal links likely to expose contacts (contato, equipe, sobre...).
      *
-     * @return array  absolute URLs
+     * @return array absolute URLs
      */
     protected function extractInternalLinks(string $html, string $base): array
     {
@@ -617,8 +617,6 @@ class LeadEnrichmentService
 
     /**
      * Extract e-mails declared in JSON-LD / schema.org markup.
-     *
-     * @return array
      */
     protected function extractJsonLdEmails(string $html): array
     {
@@ -681,9 +679,9 @@ class LeadEnrichmentService
             return null;
         }
 
-        $newHost = str_starts_with($host, 'www.') ? substr($host, 4) : 'www.' . $host;
+        $newHost = str_starts_with($host, 'www.') ? substr($host, 4) : 'www.'.$host;
 
-        return str_replace('//' . $host, '//' . $newHost, $url);
+        return str_replace('//'.$host, '//'.$newHost, $url);
     }
 
     /**
@@ -704,8 +702,8 @@ class LeadEnrichmentService
             }
 
             return $network === 'instagram'
-                ? 'https://instagram.com/' . $handle
-                : 'https://facebook.com/' . $handle;
+                ? 'https://instagram.com/'.$handle
+                : 'https://facebook.com/'.$handle;
         }
 
         return null;
@@ -719,7 +717,7 @@ class LeadEnrichmentService
         // Capture the full slug up to a real delimiter (quote, space, query, fragment),
         // so accents / percent-encoding don't truncate it.
         if (preg_match('/https?:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/(company|in|school)\/([^"\'\s?#<>\\\\]+)/i', $html, $m)) {
-            return 'https://linkedin.com/' . strtolower($m[1]) . '/' . rtrim($m[2], '/');
+            return 'https://linkedin.com/'.strtolower($m[1]).'/'.rtrim($m[2], '/');
         }
 
         return null;
@@ -745,7 +743,7 @@ class LeadEnrichmentService
         $host = strtolower($host);
 
         foreach ($list as $entry) {
-            if ($host === $entry || str_ends_with($host, '.' . $entry)) {
+            if ($host === $entry || str_ends_with($host, '.'.$entry)) {
                 return true;
             }
         }
@@ -758,7 +756,7 @@ class LeadEnrichmentService
      *
      * Used when the lead's "website" is itself a wa.me / instagram / facebook URL.
      *
-     * @return array  partial result fields
+     * @return array partial result fields
      */
     protected function contactFromUrl(string $url): array
     {
@@ -770,19 +768,19 @@ class LeadEnrichmentService
         }
 
         if (preg_match('/instagram\.com\/([a-z0-9_.]+)/i', $url, $m) && ! in_array(strtolower($m[1]), ['p', 'reel', 'explore'], true)) {
-            $out['instagram'] = 'https://instagram.com/' . rtrim($m[1], '/');
+            $out['instagram'] = 'https://instagram.com/'.rtrim($m[1], '/');
         }
 
         if (preg_match('/facebook\.com\/([a-z0-9_.\-\/]+)/i', $url, $m)) {
             $handle = rtrim($m[1], '/');
 
             if (! in_array(strtolower($handle), ['sharer', 'sharer.php', 'plugins', 'tr'], true)) {
-                $out['facebook'] = 'https://facebook.com/' . $handle;
+                $out['facebook'] = 'https://facebook.com/'.$handle;
             }
         }
 
         if (preg_match('/linkedin\.com\/(company|in)\/([a-z0-9_.\-]+)/i', $url, $m)) {
-            $out['linkedin'] = 'https://linkedin.com/' . strtolower($m[1]) . '/' . rtrim($m[2], '/');
+            $out['linkedin'] = 'https://linkedin.com/'.strtolower($m[1]).'/'.rtrim($m[2], '/');
         }
 
         return $out;
@@ -847,7 +845,7 @@ class LeadEnrichmentService
         }
 
         if (! Str::startsWith($website, ['http://', 'https://'])) {
-            $website = 'http://' . $website;
+            $website = 'http://'.$website;
         }
 
         return filter_var($website, FILTER_VALIDATE_URL) ? $website : null;

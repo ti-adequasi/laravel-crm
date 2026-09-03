@@ -96,6 +96,7 @@ return [
         'view' => 'Visualizar',
         'convert' => 'Converter em lead',
         'discard' => 'Descartar',
+        'view-opportunity' => 'Ver oportunidade',
     ],
 
     'enrichment' => [
@@ -140,6 +141,7 @@ return [
         'view-on-google' => 'Ver no Google Maps',
         'close' => 'Fechar',
         'cancel' => 'Cancelar',
+        'already-converted' => 'Já convertido em oportunidade.',
         'confirm-convert' => 'Converter este prospect em oportunidade do CRM?',
         'convert-title' => 'Converter em oportunidade',
         'convert-pipeline' => 'Funil',
@@ -170,6 +172,13 @@ return [
             'rapidapi-maps-host' => 'Host RapidAPI',
             'cnpja-api-key' => 'Chave da API comercial CNPJá',
             'cnpja-daily-limit' => 'Limite diário de créditos CNPJá',
+        ],
+
+        'enrichment' => [
+            'title' => 'Enriquecimento',
+            'info' => 'O que o enriquecimento por site tenta descobrir, além de e-mail, redes sociais e CNPJ.',
+            'detect-lgpd-signals' => 'Detectar política de privacidade e DPO (LGPD)',
+            'detect-lgpd-signals-info' => 'Desligue se você usa o CRM para segmentos onde política de privacidade e Encarregado de Dados (DPO) não fazem sentido como critério de prospecção. Não afeta enriquecimentos já feitos.',
         ],
     ],
 ];

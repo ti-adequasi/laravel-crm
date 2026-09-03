@@ -33,6 +33,11 @@
                             <button type="button" class="text-2xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" @click="close">&times;</button>
                         </div>
 
+                        <div v-if="selected.lead_status === 'convertido' && selected.opportunity_id" class="mx-6 mt-4 flex items-center justify-between rounded-md bg-green-50 px-4 py-3 text-sm dark:bg-green-900/20">
+                            <span class="font-medium text-green-800 dark:text-green-400">@lang('leadgreen::app.modal.already-converted')</span>
+                            <a :href="`{{ url(config('app.admin_path').'/leads/view') }}/${selected.opportunity_id}`" class="font-medium text-brandColor hover:underline">@lang('leadgreen::app.datagrid.view-opportunity') →</a>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4 p-6 text-sm">
                             <div v-if="selected.phone_number">
                                 <label class="text-xs font-medium text-gray-500">@lang('leadgreen::app.modal.phone')</label>

@@ -96,6 +96,7 @@ return [
         'view' => 'View',
         'convert' => 'Convert to lead',
         'discard' => 'Discard',
+        'view-opportunity' => 'View opportunity',
     ],
 
     'enrichment' => [
@@ -140,6 +141,7 @@ return [
         'view-on-google' => 'View on Google Maps',
         'close' => 'Close',
         'cancel' => 'Cancel',
+        'already-converted' => 'Already converted to an opportunity.',
         'confirm-convert' => 'Convert this prospect into a CRM opportunity?',
         'convert-title' => 'Convert to opportunity',
         'convert-pipeline' => 'Pipeline',
@@ -170,6 +172,13 @@ return [
             'rapidapi-maps-host' => 'RapidAPI host',
             'cnpja-api-key' => 'CNPJá commercial API key',
             'cnpja-daily-limit' => 'CNPJá daily credit limit',
+        ],
+
+        'enrichment' => [
+            'title' => 'Enrichment',
+            'info' => 'What website enrichment tries to discover, beyond email, socials and CNPJ.',
+            'detect-lgpd-signals' => 'Detect privacy policy and DPO (LGPD)',
+            'detect-lgpd-signals-info' => 'Turn off if you use the CRM for segments where a privacy policy and Data Protection Officer are not a meaningful prospecting signal. Does not affect enrichments already done.',
         ],
     ],
 ];
