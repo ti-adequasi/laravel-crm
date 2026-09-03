@@ -1,9 +1,13 @@
 # LeadGreen
 
 Google Maps business prospecting plus website/CNPJ enrichment. Search →
-preview → import → work the funnel (`novo` → `em_prospeccao` → `convertido`
-/ `descartado` / `reaproveitavel`) → convert into a real CRM lead
-(Organization + Person + Lead).
+preview → filter (website presence, minimum rating/reviews, hide
+already-imported) → select individually or in bulk → import only what's
+picked → work the funnel (`novo` → `em_prospeccao` → `convertido` /
+`descartado` / `reaproveitavel`) → convert into a real CRM lead (Organization
++ Person + Lead). The preview keeps every non-closed result, including
+businesses without a website — they're visible and filterable, just never
+importable, since the CRM has no way to reach them.
 
 Ported from a working ad-hoc implementation in a sibling instance
 (`ti-adequasi/adequa.crm`, not part of this repo) into the self-contained

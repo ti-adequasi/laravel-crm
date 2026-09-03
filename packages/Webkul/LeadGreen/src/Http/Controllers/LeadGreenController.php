@@ -56,13 +56,19 @@ class LeadGreenController extends Controller
 
             $total = count($results);
 
-            $withWebsite = array_values(array_filter(
+            // Businesses without a website can never be imported (there's no
+            // way for the CRM to reach them) — permanently-closed ones are
+            // dropped too. Everything else is kept and shipped to the
+            // preview; "has site" / rating / review-count filters are
+            // applied client-side from there, so switching them doesn't
+            // cost another call against the search quota.
+            $candidates = array_values(array_filter(
                 $results,
-                fn ($r) => ! empty($r['website']) && empty($r['is_permanently_closed'])
+                fn ($r) => empty($r['is_permanently_closed'])
             ));
 
             $existing = $this->leadGreenRepository->findExistingBusinessIds(
-                array_filter(array_column($withWebsite, 'business_id'))
+                array_filter(array_column($candidates, 'business_id'))
             );
 
             $leads = array_map(function ($r) use ($existing) {
@@ -71,6 +77,7 @@ class LeadGreenController extends Controller
                     'name'                  => $r['name'] ?? null,
                     'phone_number'          => $r['phone_number'] ?? null,
                     'website'               => $r['website'] ?? null,
+                    'has_website'           => ! empty($r['website']),
                     'full_address'          => $r['full_address'] ?? null,
                     'city'                  => $r['city'] ?? null,
                     'state'                 => $r['state'] ?? null,
@@ -89,13 +96,16 @@ class LeadGreenController extends Controller
                     'photos'                => $r['photos'] ?? [],
                     'is_duplicate'          => in_array($r['business_id'] ?? null, $existing, true),
                 ];
-            }, $withWebsite);
+            }, $candidates);
 
-            $duplicates = count(array_filter($leads, fn ($l) => $l['is_duplicate']));
+            $withWebsite = array_filter($leads, fn ($l) => $l['has_website']);
+            $duplicates = count(array_filter($withWebsite, fn ($l) => $l['is_duplicate']));
 
             $token = (string) Str::uuid();
 
-            Cache::put('leadgreen_search_'.$token, $withWebsite, now()->addMinutes(30));
+            // Cache the full candidate set (raw provider shape) so a later,
+            // more permissive import selection can still draw from it.
+            Cache::put('leadgreen_search_'.$token, $candidates, now()->addMinutes(30));
 
             return response()->json([
                 'token'  => $token,
@@ -113,11 +123,17 @@ class LeadGreenController extends Controller
     }
 
     /**
-     * Confirm the import of a previously previewed search.
+     * Confirm the import of a previously previewed search — restricted to
+     * the caller's selected business_ids, since not every previewed result
+     * is necessarily wanted.
      */
     public function import(Request $request)
     {
-        $request->validate(['token' => 'required|string']);
+        $request->validate([
+            'token'          => 'required|string',
+            'business_ids'   => 'required|array|min:1',
+            'business_ids.*' => 'string',
+        ]);
 
         $results = Cache::get('leadgreen_search_'.$request->input('token'));
 
@@ -125,10 +141,13 @@ class LeadGreenController extends Controller
             return response()->json(['message' => trans('leadgreen::app.search.error.expired')], 422);
         }
 
-        try {
-            $stats = $this->leadGreenRepository->importResults($results);
+        $selected = array_values(array_filter(
+            $results,
+            fn ($r) => in_array($r['business_id'] ?? null, $request->input('business_ids'), true)
+        ));
 
-            Cache::forget('leadgreen_search_'.$request->input('token'));
+        try {
+            $stats = $this->leadGreenRepository->importResults($selected);
 
             return response()->json([
                 'message' => trans('leadgreen::app.search.success', $stats),

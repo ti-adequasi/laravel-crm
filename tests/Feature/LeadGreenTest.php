@@ -71,7 +71,7 @@ it('fails the search with a clear message when no API key is configured', functi
         ->assertJson(fn ($json) => $json->has('message'));
 });
 
-it('previews and imports search results, deduping by business_id and dropping businesses without a website', function () {
+it('previews businesses without a website too, flagged so they cannot be selected for import', function () {
     config(['services.rapidapi_maps.key' => 'test-key']);
 
     $existing = makeProspect(['business_id' => 'dup-1']);
@@ -82,6 +82,7 @@ it('previews and imports search results, deduping by business_id and dropping bu
                 ['business_id' => 'dup-1', 'name' => 'Already imported', 'website' => 'https://dup.example.com'],
                 ['business_id' => 'new-1', 'name' => 'Brand new business', 'website' => 'https://new.example.com'],
                 ['business_id' => 'no-site-1', 'name' => 'No website business'],
+                ['business_id' => 'closed-1', 'name' => 'Shut down', 'website' => 'https://closed.example.com', 'is_permanently_closed' => true],
             ],
         ], 200),
     ]);
@@ -91,18 +92,66 @@ it('previews and imports search results, deduping by business_id and dropping bu
         ->assertOk()
         ->json();
 
+    // Permanently-closed is dropped outright; the no-website one is kept
+    // (visible, filterable) but flagged as not having a site.
+    expect($search['leads'])->toHaveCount(3);
+    expect(collect($search['leads'])->pluck('business_id'))->not->toContain('closed-1');
+
+    $noSite = collect($search['leads'])->firstWhere('business_id', 'no-site-1');
+    expect($noSite['has_website'])->toBeFalse();
+
     expect($search['counts']['with_website'])->toBe(2);
     expect($search['counts']['duplicates'])->toBe(1);
     expect($search['counts']['new'])->toBe(1);
+});
 
+it('imports only the selected business_ids, leaving the rest of the batch untouched', function () {
+    config(['services.rapidapi_maps.key' => 'test-key']);
+
+    Http::fake([
+        'maps-data.p.rapidapi.com/*' => Http::response([
+            'data' => [
+                ['business_id' => 'pick-me', 'name' => 'Wanted', 'website' => 'https://wanted.example.com'],
+                ['business_id' => 'skip-me', 'name' => 'Not wanted', 'website' => 'https://skip.example.com'],
+                ['business_id' => 'no-site-1', 'name' => 'No website business'],
+            ],
+        ], 200),
+    ]);
+
+    $search = test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadgreen.search'), ['query' => 'Padarias em Osasco - SP'])
+        ->assertOk()
+        ->json();
+
+    // Selecting the no-website row is harmless — the backend still refuses
+    // to import it (no page for the CRM to reach), it just counts as skipped.
     $import = test()->actingAs(getDefaultAdmin())
-        ->post(route('admin.leadgreen.import'), ['token' => $search['token']])
+        ->post(route('admin.leadgreen.import'), [
+            'token'        => $search['token'],
+            'business_ids' => ['pick-me', 'no-site-1'],
+        ])
         ->assertOk()
         ->json();
 
     expect($import['stats'])->toBe(['found' => 2, 'inserted' => 1, 'skipped' => 1]);
-    expect(LeadGreen::where('business_id', 'new-1')->exists())->toBeTrue();
-    expect(LeadGreen::where('business_id', 'dup-1')->count())->toBe(1);
+    expect(LeadGreen::where('business_id', 'pick-me')->exists())->toBeTrue();
+    expect(LeadGreen::where('business_id', 'skip-me')->exists())->toBeFalse();
+});
+
+it('requires at least one business_id to import', function () {
+    config(['services.rapidapi_maps.key' => 'test-key']);
+
+    Http::fake(['maps-data.p.rapidapi.com/*' => Http::response(['data' => [
+        ['business_id' => 'a', 'name' => 'A', 'website' => 'https://a.example.com'],
+    ]], 200)]);
+
+    $search = test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadgreen.search'), ['query' => 'Padarias em Osasco - SP'])
+        ->json();
+
+    test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadgreen.import'), ['token' => $search['token']])
+        ->assertSessionHasErrors('business_ids');
 });
 
 it('converts a prospect into a CRM lead, linked through a Person to an Organization', function () {
