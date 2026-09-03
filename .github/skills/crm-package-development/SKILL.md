@@ -173,6 +173,63 @@ and say so explicitly in the PR description.
 
 ---
 
+## Admin-Configurable Settings (`Config/core_config.php`)
+
+If a module needs a credential or a toggle an admin should be able to change
+from the UI instead of editing `.env`, ship `Config/core_config.php` and
+merge it the same way as `acl.php`/`menu.php`:
+
+```php
+$this->mergeConfigFrom(dirname(__DIR__).'/Config/core_config.php', 'core_config');
+```
+
+The generic Configuration screen (`Admin/Http/Controllers/Configuration`)
+renders whatever is merged into `core_config` — **a new module needs no
+controller, route, or view of its own** to get a working settings page. The
+file is a flat list of entries forming a three-level dotted key — tab,
+section, field-group — where only the deepest level carries `fields`:
+
+```php
+return [
+    ['key' => 'your_module', 'name' => '...', 'sort' => 20],                    // tab
+    ['key' => 'your_module.settings', 'name' => '...', 'icon' => '...', 'sort' => 1], // section
+    ['key' => 'your_module.settings.api_keys', 'name' => '...', 'sort' => 1, 'fields' => [
+        ['name' => 'api_key', 'title' => '...', 'type' => 'password', 'validation' => 'nullable|string'],
+    ]],
+];
+```
+
+Field `type`s in use elsewhere: `text`, `password`, `boolean`, `select`,
+`number`, `color`, `image`, `editor`. Read a saved value back with
+`core()->getConfigData('your_module.settings.api_keys.api_key')` — falling
+back to `config('services.your_module.key')` costs nothing and lets an
+ops-managed deploy keep using `.env` instead of the database if it prefers.
+
+---
+
+## Package-Owned Scheduled Commands
+
+Register the command and its schedule from the module's own provider — never
+add it to `app/Console/Kernel.php`:
+
+```php
+public function boot(): void
+{
+    if ($this->app->runningInConsole()) {
+        $this->commands([YourCommand::class]);
+
+        $this->app->booted(function () {
+            $this->app->make(\Illuminate\Console\Scheduling\Schedule::class)
+                ->command(YourCommand::class)
+                ->everyMinute()
+                ->withoutOverlapping();
+        });
+    }
+}
+```
+
+---
+
 ## Localization (Translations)
 
 ### The rule

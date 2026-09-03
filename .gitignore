@@ -15,7 +15,8 @@ Homestead.yaml
 /node_modules
 npm-debug.log
 package-lock.json
-/docs
+/docs/*
+!/docs/adequa-crm-feature-notes.md
 /playwright-report
 /public/css
 /public/js

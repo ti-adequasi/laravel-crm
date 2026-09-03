@@ -1,0 +1,24 @@
+{
+    "name": "krayin/laravel-leadgreen",
+    "license": "MIT",
+    "description": "Google Maps lead prospecting and website/CNPJ enrichment for Krayin CRM. Ported from a working ad-hoc implementation into the self-contained module shape.",
+    "require": {
+        "krayin/laravel-core": "^1.0",
+        "krayin/laravel-lead": "^1.0",
+        "krayin/laravel-contact": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Webkul\\LeadGreen\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\LeadGreen\\Providers\\LeadGreenServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "minimum-stability": "dev"
+}
