@@ -1,0 +1,22 @@
+{
+    "name": "krayin/laravel-sandbox",
+    "license": "MIT",
+    "description": "Reference self-contained module validating the crm-package-development skill's module recipe. Safe to delete.",
+    "require": {
+        "krayin/laravel-core": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Webkul\\Sandbox\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\Sandbox\\Providers\\SandboxServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "minimum-stability": "dev"
+}

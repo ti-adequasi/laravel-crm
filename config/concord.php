@@ -12,6 +12,7 @@ use Webkul\EmailTemplate\Providers\ModuleServiceProvider as EmailTemplateModuleS
 use Webkul\Lead\Providers\ModuleServiceProvider as LeadModuleServiceProvider;
 use Webkul\Product\Providers\ModuleServiceProvider as ProductModuleServiceProvider;
 use Webkul\Quote\Providers\ModuleServiceProvider as QuoteModuleServiceProvider;
+use Webkul\Sandbox\Providers\ModuleServiceProvider as SandboxModuleServiceProvider;
 use Webkul\Tag\Providers\ModuleServiceProvider as TagModuleServiceProvider;
 use Webkul\User\Providers\ModuleServiceProvider as UserModuleServiceProvider;
 use Webkul\Warehouse\Providers\ModuleServiceProvider as WarehouseModuleServiceProvider;
@@ -31,10 +32,12 @@ return [
         LeadModuleServiceProvider::class,
         ProductModuleServiceProvider::class,
         QuoteModuleServiceProvider::class,
+        SandboxModuleServiceProvider::class,
         TagModuleServiceProvider::class,
         UserModuleServiceProvider::class,
         WarehouseModuleServiceProvider::class,
         WebFormModuleServiceProvider::class,
+        DataTransferModuleServiceProvider::class,
     ],
 
     'register_route_models' => true,

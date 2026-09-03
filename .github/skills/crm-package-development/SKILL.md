@@ -106,6 +106,24 @@ no-op, class-not-found):
 | `config/concord.php` → `modules` | `NameModuleServiceProvider::class` | Registers `$models` with Concord — required for the override pattern below |
 | — | `composer dump-autoload` | Regenerates the class map after the first edit above |
 
+If the module is self-contained and ships `Config/acl.php` / `Config/menu.php`,
+merge them into the running config yourself — nothing else does it. In the
+plain provider's `register()`:
+
+```php
+public function register(): void
+{
+    $this->mergeConfigFrom(dirname(__DIR__).'/Config/menu.php', 'menu.admin');
+    $this->mergeConfigFrom(dirname(__DIR__).'/Config/acl.php', 'acl');
+}
+```
+
+Both files return a plain indexed array (see §5's examples) — `mergeConfigFrom`
+concatenates it onto whatever every other package already contributed to
+`menu.admin` / `acl`, in provider-boot order. Skip this and the routes and
+Blade views work fine, but the page never appears in the sidebar and nothing
+enforces access to it.
+
 Don't be misled by each package's own `composer.json` (declares a name like
 `krayin/laravel-lead` and an `extra.laravel.providers` block) — it is **not**
 what wires the package into this app. Root `composer.json` never `require`s
