@@ -1,6 +1,6 @@
 ---
 name: crm-package-development
-description: Use when creating a new Krayin CRM package or module, extending CRM functionality via a package, or adding custom business logic without modifying core files. Also use for any translation work — adding or moving lang files, adding a locale, or deciding whether a package gets its own Resources/lang directory — and whenever a fix or feature needs a CHANGELOG.md entry. Covers Laravel package structure, service providers, migrations, models, repositories, routes, controllers, views, localization, changelog entries, config, ACL, and menus.
+description: Use when creating a new Krayin CRM package or module, extending CRM functionality via a package, or adding custom business logic without modifying core files. Also use for any translation work — adding or moving lang files, adding a locale, or deciding whether a package gets its own Resources/lang directory — and whenever a fix or feature needs a CHANGELOG.md entry. Covers Laravel package structure, service providers, migrations, models, repositories, routes, controllers, views, localization, changelog entries, config, ACL, and menus — including which of the two module shapes to build, the four files that wire a module into the app, and how to override a model or hook into an existing one (Contract/Proxy rebinding, before/after events) without editing core.
 ---
 
 # Skill: CRM Package Development (Krayin CRM)
@@ -70,6 +70,88 @@ packages/
         │       └── acl.php
         └── composer.json
 ```
+
+---
+
+## Module Shape: Split vs Self-Contained
+
+Two shapes exist in this codebase today. Pick deliberately — this decides which
+files you're editing months from now.
+
+- **Split** (`Lead`, `Contact`, `Quote`, `Product`, `User`, …) — the package
+  holds only `Contracts/`, `Models/` (+ `*Proxy`), `Repositories/`,
+  `Database/Migrations/`. Every controller, route, Blade view, ACL entry and
+  menu entry lives centrally in `Admin`, under a same-named sub-folder
+  (`Admin/Http/Controllers/Lead/`, `Admin/Routes/Admin/leads-routes.php`, …).
+- **Self-contained** (`WebForm`, `GoogleContact`) — one package holds every
+  layer, including its own `Http/Controllers`, `Routes`, `Resources/views`,
+  `Config/acl.php`, `Config/menu.php`.
+
+**Build the self-contained shape for a new module.** It ships a feature with
+zero edits inside `packages/Webkul/Admin` — nothing to merge-conflict with
+core, nothing to lose on the next upstream upgrade.
+
+---
+
+## Wiring a Module In
+
+Nothing scans `packages/Webkul/`. A module is registered by hand, in four
+places — miss one and the symptom is different each time (blank page, silent
+no-op, class-not-found):
+
+| File | Add | Why |
+|---|---|---|
+| root `composer.json` → `autoload.psr-4` | `"Webkul\\Name\\": "packages/Webkul/Name/src"` | PHP's autoloader has to find the classes at all |
+| `bootstrap/providers.php` | `NameServiceProvider::class` | Boots the plain provider — migrations, and (self-contained) routes/views/translations |
+| `config/concord.php` → `modules` | `NameModuleServiceProvider::class` | Registers `$models` with Concord — required for the override pattern below |
+| — | `composer dump-autoload` | Regenerates the class map after the first edit above |
+
+Don't be misled by each package's own `composer.json` (declares a name like
+`krayin/laravel-lead` and an `extra.laravel.providers` block) — it is **not**
+what wires the package into this app. Root `composer.json` never `require`s
+these package names and `vendor/krayin/` carries no such package; that file
+exists only so the package could be published standalone to Packagist. The
+four wires above are the only thing actually running.
+
+---
+
+## Extending an Existing Module Without Touching Core
+
+Two sanctioned mechanisms. Reach for one of these before editing a file under
+`packages/Webkul/<CoreModule>` or `packages/Webkul/Admin`.
+
+**1. Contract + Proxy override — changes what a model *is*, everywhere.**
+Every relation resolves through a Proxy (`PipelineProxy::modelClass()`), never
+a concrete class, and every repository's `model()` returns the Contract, not
+the class. Concord's `registerModel()` does `$this->models[$abstract] =
+$concrete` — a plain array write, so the *last* module registered for a given
+contract wins. To change what `Lead` resolves to app-wide, register your own
+subclass against the same contract from a `ModuleServiceProvider` listed
+*after* `LeadModuleServiceProvider` in `config/concord.php`:
+
+```php
+protected $models = [
+    \Webkul\Lead\Contracts\Lead::class => \Webkul\YourPackage\Models\Lead::class,
+];
+```
+
+Your class must extend the original — Concord enforces `is_subclass_of()` and
+throws if it doesn't.
+
+**2. Before/after events — runs code around an action.** Every admin
+controller fires `<entity>.<action>.before` / `.after` around create, update
+and delete (241 call sites at last count — `grep -rn "Event::dispatch"
+packages/Webkul` to see the current set for a given entity). Listen from your
+own package's `boot()`:
+
+```php
+Event::listen('lead.create.after', function ($lead) {
+    // notify, sync, validate — zero edits to Lead or Admin
+});
+```
+
+Edit the core file directly only when neither mechanism covers the change,
+and say so explicitly in the PR description.
 
 ---
 
@@ -220,3 +302,14 @@ released headings show the expected style: `## **v2.2.4 (20th of July 2026)** *R
 - **Do not bump the version constant as part of a feature or fix.**
   `KRAYIN_VERSION` in `packages/Webkul/Core/src/Core.php` is incremented in the
   release commit, together with dating the changelog heading — not per change.
+
+---
+
+## Keeping This Skill Current
+
+This file is documentation of record for the module architecture — a gap in
+it is a bug in it. When you work out a pattern that isn't written down here —
+a new convention, an architectural decision, a gotcha that cost time to find —
+fold it back into this file in the same change, the same way `CHANGELOG.md`
+gets a line for every fix. A skill that drifts from what the codebase actually
+does is worse than no skill at all.
