@@ -245,7 +245,26 @@ return [
 ```
 
 Field `type`s in use elsewhere: `text`, `password`, `boolean`, `select`,
-`number`, `color`, `image`, `editor`. Read a saved value back with
+`number`, `color`, `image`, `editor`.
+
+**Never write `nullable` or `string` into a field's `validation` string —
+the Save button will silently stop working for that field.** The same
+string drives both server-side Laravel validation (`Webkul\Admin\Http\Requests\ConfigurationForm`,
+which understands `nullable` natively) *and* client-side VeeValidate
+(`ItemField::getValidations()`, `packages/Webkul/Core/src/SystemConfig/ItemField.php`) —
+and only one Laravel→VeeValidate translation exists (`'min' => 'min_value'`).
+Any other Laravel-only rule name (`nullable`, `string`, …) reaches VeeValidate
+literally, an unregistered rule name, and breaks that field's client-side
+validation — the form silently never submits, with no visible error. Every
+stock Krayin field either omits `validation` entirely for an optional field
+(the omission itself is what makes it optional in both ecosystems — do the
+same instead of writing `nullable`) or uses only rule names that exist
+natively in `@vee-validate/rules` (`required`, `email`, `min`, `max`,
+`required_if`, …) or in the translation map. When unsure, grep
+`packages/Webkul/Admin/src/Config/core_config.php` for a comparable field's
+`validation` value rather than reasoning from Laravel's rule set alone.
+
+Read a saved value back with
 `core()->getConfigData('your_module.settings.api_keys.api_key')` — falling
 back to `config('services.your_module.key')` costs nothing and lets an
 ops-managed deploy keep using `.env` instead of the database if it prefers.
