@@ -24,6 +24,16 @@ an ops-managed deploy):
   (free, rate-limited) are tried first; the paid commercial tier is only
   used as a last resort and capped at a configurable daily credit count.
 
+## A known flake in the search
+
+The `maps-data` provider occasionally answers a perfectly good query with
+`HTTP 200 {"data": []}` — confirmed directly against a real key, retrying
+the identical query moments later returned normal results. `GoogleMapsService::search()`
+retries up to 3 times on an empty-but-successful response (Laravel's own
+`->retry()` only fires on a thrown exception, which a 200 never causes, so
+this is handled separately). If a search still comes back empty after that,
+it's a real zero-result query, not this flakiness.
+
 ## What's deliberately not here
 
 LinkedIn company-data enrichment (a separate, quota-capped, disabled-by-

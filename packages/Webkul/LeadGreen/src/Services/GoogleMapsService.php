@@ -26,34 +26,57 @@ class GoogleMapsService
             throw new \RuntimeException(trans('leadgreen::app.search.error.no-api-key'));
         }
 
-        $response = Http::timeout(120)
-            ->retry(2, 5000)
-            ->withHeaders([
-                'x-rapidapi-host' => $host,
-                'x-rapidapi-key' => $key,
-            ])
-            ->get("https://{$host}/searchmaps.php", [
-                'query' => $query,
-                'country' => 'br',
-                'lang' => 'pt',
-                'zoom' => $zoom,
-                'limit' => $limit,
-            ]);
+        // The underlying scraper occasionally answers a legitimate query with
+        // an empty result set (HTTP 200, {"data": []}) rather than an error —
+        // observed directly against a real key, not just a theoretical case.
+        // Laravel's own ->retry() only re-runs on a thrown exception, which a
+        // 200 response never causes, so an empty-but-successful answer is
+        // retried here explicitly before it's treated as "no results."
+        $attempts = 3;
 
-        if ($response->failed()) {
-            Log::error('LeadGreen GoogleMapsService request failed', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            $response = Http::timeout(120)
+                ->retry(2, 5000)
+                ->withHeaders([
+                    'x-rapidapi-host' => $host,
+                    'x-rapidapi-key' => $key,
+                ])
+                ->get("https://{$host}/searchmaps.php", [
+                    'query' => $query,
+                    'country' => 'br',
+                    'lang' => 'pt',
+                    'zoom' => $zoom,
+                    'limit' => $limit,
+                ]);
 
-            throw new \RuntimeException(trans('leadgreen::app.search.error.request-failed', [
-                'status' => $response->status(),
-            ]));
+            if ($response->failed()) {
+                Log::error('LeadGreen GoogleMapsService request failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                throw new \RuntimeException(trans('leadgreen::app.search.error.request-failed', [
+                    'status' => $response->status(),
+                ]));
+            }
+
+            $data = $response->json('data');
+
+            if (! empty($data)) {
+                return $data;
+            }
+
+            if ($attempt < $attempts) {
+                Log::info('LeadGreen GoogleMapsService got an empty result set, retrying', [
+                    'query' => $query,
+                    'attempt' => $attempt,
+                ]);
+
+                sleep(2);
+            }
         }
 
-        $data = $response->json('data');
-
-        return is_array($data) ? $data : [];
+        return [];
     }
 
     /**

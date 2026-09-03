@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Webkul\Contact\Models\Organization;
 use Webkul\Contact\Models\Person;
@@ -58,6 +59,12 @@ it('shows the leadgreen index and search pages to an authenticated admin', funct
 });
 
 it('fails the search with a clear message when no API key is configured', function () {
+    // This environment may already have a real key saved through the settings
+    // screen (outside any test transaction) — clear it for this test only;
+    // DatabaseTransactions rolls the deletion back afterward.
+    DB::table('core_config')->where('code', 'lead_green.settings.api_keys.rapidapi_maps_key')->delete();
+    config(['services.rapidapi_maps.key' => null]);
+
     test()->actingAs(getDefaultAdmin())
         ->post(route('admin.leadgreen.search'), ['query' => 'Padarias em Osasco - SP'])
         ->assertStatus(500)
