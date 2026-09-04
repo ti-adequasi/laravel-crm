@@ -269,6 +269,41 @@ it('validates a CNPJ by its check digits', function () {
     expect($service->isValidCnpj('123'))->toBeFalse();
 });
 
+it('falls back to ReceitaWS when BrasilAPI and CNPJá Open both fail, converting its DD/MM/YYYY date to ISO', function () {
+    Http::fake([
+        'brasilapi.com.br/*' => Http::response(null, 404),
+        'open.cnpja.com/*' => Http::response(null, 404),
+        'receitaws.com.br/*' => Http::response([
+            'status' => 'OK',
+            'nome' => 'Empresa Teste LTDA',
+            'fantasia' => 'Teste',
+            'situacao' => 'ATIVA',
+            'abertura' => '02/09/2009',
+            'atividade_principal' => [['code' => '85.50-3-01', 'text' => 'Educação']],
+            'porte' => 'DEMAIS',
+            'natureza_juridica' => '206-2 - Sociedade Empresária Limitada',
+            'capital_social' => '1000.00',
+            'telefone' => '(11) 4000-0000',
+            'email' => 'contato@empresateste.com.br',
+            'simples' => ['optante' => false],
+            'simei' => ['optante' => false],
+            'qsa' => [['nome' => 'Fulano de Tal', 'qual' => 'Sócio-Administrador']],
+        ], 200),
+    ]);
+
+    $service = app(CnpjService::class);
+    $data = $service->lookup('11222333000181');
+
+    expect($data)->not->toBeNull();
+    expect($data['razao_social'])->toBe('Empresa Teste LTDA');
+    // 02/09/2009 is September 2nd in Brazilian order — proves it wasn't
+    // misread as US-style February 9th by a bare Carbon::parse().
+    expect($data['data_abertura'])->toBe('2009-09-02');
+    expect($data['socios'][0]['nome'])->toBe('Fulano de Tal');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'receitaws.com.br'));
+});
+
 it('detects privacy policy / DPO signals by default, and skips the extra fetch entirely once disabled', function () {
     Http::fake([
         'empresa-teste.com.br/privacidade' => Http::response('<html>Encarregado de Dados: joao@empresa-teste.com.br</html>', 200),
@@ -298,6 +333,48 @@ it('detects privacy policy / DPO signals by default, and skips the extra fetch e
     expect($disabled['has_dpo'])->toBeFalse();
     // Not just "ignored" — the privacy page is never even requested.
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/privacidade'));
+});
+
+it('verifies the picked e-mail via Disify, and stores email_quality as its numeric rank weight', function () {
+    Http::fake([
+        'disify.com/*' => Http::response([
+            'format' => true,
+            'domain' => 'empresa-teste.com.br',
+            'disposable' => false,
+            'dns' => true,
+        ], 200),
+        'empresa-teste.com.br/*' => Http::response('<html><a href="mailto:contato@empresa-teste.com.br">Contato</a></html>', 200),
+    ]);
+
+    $result = app(LeadEnrichmentService::class)->enrichFromWebsite('https://empresa-teste.com.br');
+
+    expect($result['email'])->toBe('contato@empresa-teste.com.br');
+    expect($result['email_verified'])->toBeTrue();
+    // "contato@" is the 'role' category — weight 0, not the string 'role'
+    // (the column is a tinyint; storing the category string would truncate).
+    expect($result['email_quality'])->toBe(0);
+});
+
+it('marks an e-mail unverified when its domain has no mail server', function () {
+    Http::fake([
+        'disify.com/*' => Http::response(['format' => true, 'domain' => 'empresa-teste.com.br', 'disposable' => false, 'dns' => false], 200),
+        'empresa-teste.com.br/*' => Http::response('<html><a href="mailto:contato@empresa-teste.com.br">Contato</a></html>', 200),
+    ]);
+
+    $result = app(LeadEnrichmentService::class)->enrichFromWebsite('https://empresa-teste.com.br');
+
+    expect($result['email_verified'])->toBeFalse();
+});
+
+it('leaves email_verified null (not false) when Disify itself is unreachable', function () {
+    Http::fake([
+        'disify.com/*' => Http::response(null, 500),
+        'empresa-teste.com.br/*' => Http::response('<html><a href="mailto:contato@empresa-teste.com.br">Contato</a></html>', 200),
+    ]);
+
+    $result = app(LeadEnrichmentService::class)->enrichFromWebsite('https://empresa-teste.com.br');
+
+    expect($result['email_verified'])->toBeNull();
 });
 
 it('hides the privacy policy / DPO grid columns once LGPD detection is disabled', function () {

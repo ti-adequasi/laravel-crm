@@ -110,7 +110,12 @@ class LeadGreenDataGrid extends DataGrid
             'searchable' => true,
             'filterable' => true,
             'sortable' => true,
-            'visibility' => true,
+            // Hidden by default — redundant with Cidade for the common
+            // single-region prospecting session, and this grid already has
+            // enough equal-width columns to collide at ordinary laptop
+            // widths (~1024-1280px). Still filterable/sortable; a user can
+            // re-enable it from the grid's own column-visibility picker.
+            'visibility' => false,
         ]);
 
         $this->addColumn([
@@ -120,7 +125,12 @@ class LeadGreenDataGrid extends DataGrid
             'searchable' => false,
             'filterable' => true,
             'sortable' => false,
-            'visibility' => true,
+            // Hidden by default — rich category badges take real width on a
+            // grid that's already tight on room (see the note on 'state'
+            // above); still filterable, and the category chips already
+            // shown on the search page cover the "what kind of business is
+            // this" question before anything gets imported.
+            'visibility' => false,
             'closure' => function ($row) {
                 $types = json_decode($row->types, true);
 
@@ -155,7 +165,11 @@ class LeadGreenDataGrid extends DataGrid
                     return '-';
                 }
 
-                return '<div class="flex items-center gap-1"><span class="text-yellow-500">★</span><span class="text-sm font-semibold text-gray-900 dark:text-white">'.number_format($row->rating, 1).'</span></div>';
+                $reviews = $row->review_count
+                    ? '<span class="text-xs text-gray-500 dark:text-gray-400">('.$row->review_count.')</span>'
+                    : '';
+
+                return '<div class="flex items-center gap-1"><span class="text-yellow-500">★</span><span class="text-sm font-semibold text-gray-900 dark:text-white">'.number_format($row->rating, 1).'</span>'.$reviews.'</div>';
             },
         ]);
 
@@ -166,7 +180,12 @@ class LeadGreenDataGrid extends DataGrid
             'searchable' => false,
             'filterable' => true,
             'sortable' => true,
-            'visibility' => true,
+            // Hidden by default — shown inline in parentheses on the rating
+            // column instead ("★ 4.4 (3683)"), which is how this pairing
+            // reads everywhere else in the product (the search-results
+            // preview, the prospect detail modal). Still its own filterable
+            // column underneath, so "minimum reviews" filtering is unaffected.
+            'visibility' => false,
             'closure' => fn ($row) => $row->review_count ?? '-',
         ]);
 
@@ -234,7 +253,7 @@ class LeadGreenDataGrid extends DataGrid
                 // to jump to what it became — make the badge itself the link,
                 // right where the eye is already looking.
                 if ($row->raw_lead_status === 'convertido' && $row->opportunity_id) {
-                    return '<a href="'.route('admin.leads.view', $row->opportunity_id).'" class="hover:opacity-75" title="'.trans('leadgreen::app.datagrid.view-opportunity').'">'.$badge.'</a>';
+                    return '<a href="'.route('admin.leads.view', $row->opportunity_id).'" class="underline decoration-dotted underline-offset-2 hover:opacity-75" title="'.trans('leadgreen::app.datagrid.view-opportunity').'">'.$badge.'</a>';
                 }
 
                 return $badge;
@@ -360,7 +379,12 @@ class LeadGreenDataGrid extends DataGrid
                 $status = $row->raw_lead_status ?? $row->lead_status;
 
                 if (in_array($status, ['novo', 'reaproveitavel'])) {
-                    $actions .= '<button onclick="window.convertLead('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.convert').'"><span class="icon-add"></span></button>';
+                    // icon-forward, not icon-add — this transforms an existing
+                    // prospect, it doesn't create a new one (icon-add means
+                    // "add new X" everywhere else in Admin). Also ties
+                    // visually to the "view opportunity" action above, which
+                    // uses the same icon once a prospect is actually converted.
+                    $actions .= '<button onclick="window.convertLead('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.convert').'"><span class="icon-forward"></span></button>';
                     $actions .= '<button onclick="window.discardLead('.$row->id.')" class="cursor-pointer rounded-md p-1.5 text-2xl text-gray-600 transition-all hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800" title="'.trans('leadgreen::app.datagrid.discard').'"><span class="icon-error"></span></button>';
                 } elseif ($status === 'convertido' && $row->opportunity_id) {
                     // Already converted — the only thing left to do from here

@@ -2,14 +2,14 @@
 
 return [
     'acl' => [
-        'title' => 'Lead Green',
+        'title' => 'Leads Google',
     ],
 
     'menu' => [
-        'title' => 'Lead Green',
+        'title' => 'Leads Google',
     ],
 
-    'title' => 'Lead Green',
+    'title' => 'Leads Google',
     'search-button' => 'Buscar no Google Maps',
 
     'search' => [
@@ -28,7 +28,7 @@ return [
         'success' => ':inserted importados e :converted convertidos em oportunidades, :skipped ignorados (de :found selecionados).',
 
         'error' => [
-            'no-api-key' => 'Nenhuma chave RapidAPI configurada — adicione uma em Configuração > Lead Green.',
+            'no-api-key' => 'Nenhuma chave RapidAPI configurada — adicione uma em Configuração > Leads Google.',
             'request-failed' => 'A busca no Google Maps falhou (HTTP :status).',
             'expired' => 'Essa prévia de busca expirou — busque novamente.',
         ],
@@ -43,6 +43,9 @@ return [
             'min-reviews' => 'Mínimo de avaliações',
             'has-phone' => 'Tem telefone',
             'hide-duplicates' => 'Ocultar já importados',
+            'group-reach' => 'Alcance',
+            'group-quality' => 'Qualidade',
+            'group-status' => 'Situação',
             'hide-closed' => 'Ocultar temporariamente fechados',
             'verified-only' => 'Somente verificados',
             'any' => 'Qualquer',
@@ -104,6 +107,10 @@ return [
         'not-enriched' => 'Ainda não enriquecido.',
         'success' => 'Prospect enriquecido com sucesso.',
         'email' => 'E-mail',
+        'email-verified' => 'Verificado',
+        'email-verified-info' => 'Domínio existe e recebe e-mail, e não é um provedor descartável (verificado via Disify).',
+        'email-unverified' => 'Não confirmado',
+        'email-unverified-info' => 'O domínio não respondeu ou é de e-mail descartável — pode não ser um endereço real.',
         'whatsapp' => 'WhatsApp',
         'instagram' => 'Instagram',
         'facebook' => 'Facebook',
@@ -160,7 +167,7 @@ return [
     ],
 
     'settings' => [
-        'tab' => 'Lead Green',
+        'tab' => 'Leads Google',
         'tab-info' => 'Prospecção e enriquecimento via Google Maps',
         'section' => 'Configurações',
         'section-info' => 'Chaves de API usadas na prospecção e enriquecimento',

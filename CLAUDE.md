@@ -18,6 +18,18 @@ Do not modify files under `packages/Webkul/<CoreModule>` or
 `packages/Webkul/Admin` unless the skill's extension mechanisms genuinely
 don't cover the change — and say so explicitly when they don't.
 
+## After a UI/UX change
+
+Once a change touching an admin-facing Blade/Vue view
+(`packages/Webkul/*/src/Resources/views/**/*.blade.php`) is implemented and
+functionally verified, invoke the `design-ux-reviewer` subagent (Agent tool,
+`subagent_type: design-ux-reviewer`) before considering the task done. It
+checks visual/UX consistency against Krayin's own existing conventions —
+filter and form layout, icon placement, dark-mode parity, spacing — using a
+real browser, and reports concrete findings. Apply what's clearly right; use
+judgment (or ask) on anything more subjective. This is a standing project
+practice, not a one-off — do it for every such change, not just when asked.
+
 ## Keeping this file and the skill current
 
 Both documents describe how the codebase actually works today, not how it

@@ -34,9 +34,10 @@ an ops-managed deploy):
 
 - **RapidAPI key** for the `maps-data` product — required for the search
   itself; without it `GoogleMapsService` throws a clear, user-facing error.
-- **CNPJá commercial API key** — optional. BrasilAPI (free) and CNPJá Open
-  (free, rate-limited) are tried first; the paid commercial tier is only
-  used as a last resort and capped at a configurable daily credit count.
+- **CNPJá commercial API key** — optional. BrasilAPI (free), CNPJá Open
+  (free, ~5 req/min) and ReceitaWS (free, ~3 req/min) are tried first, in
+  that order; the paid commercial tier is only used as a last resort and
+  capped at a configurable daily credit count.
 - **Detectar política de privacidade e DPO (LGPD)** — on by default; turn off
   for segments where a privacy policy / Data Protection Officer isn't a
   meaningful prospecting signal. Read by `LeadEnrichmentService::enrichFromWebsite()`,
@@ -45,6 +46,14 @@ an ops-managed deploy):
   both. Off skips the extra HTTP fetch of the privacy-policy page entirely,
   not just the resulting fields; the "Política de privacidade" / "DPO" grid
   columns hide accordingly. Doesn't touch data already gathered while it was on.
+
+Website enrichment also verifies the picked e-mail via [Disify](https://www.disify.com/)
+(free, no key) — a real DNS/MX check plus disposable-domain detection, not
+just the regex-based "does this look like a role/person address" scoring
+`classifyEmail()` already did. Stored as `email_verified`: `true`/`false` when
+Disify actually answered, `null` when it didn't (a transient failure is never
+recorded as "this e-mail is bad"). Shown as a badge next to the e-mail in the
+prospect detail modal.
 
 ## A known flake in the search
 

@@ -3,9 +3,9 @@
 namespace Webkul\LeadGreen\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Webkul\Lead\Models\LeadProxy;
 use Webkul\LeadGreen\Casts\SafeJsonCast;
 use Webkul\LeadGreen\Contracts\LeadGreen as LeadGreenContract;
-use Webkul\Lead\Models\LeadProxy;
 use Webkul\User\Models\UserProxy;
 
 class LeadGreen extends Model implements LeadGreenContract
@@ -60,6 +60,7 @@ class LeadGreen extends Model implements LeadGreenContract
         'email',
         'email_source',
         'email_quality',
+        'email_verified',
         'emails_found',
         'instagram',
         'facebook',
@@ -102,30 +103,31 @@ class LeadGreen extends Model implements LeadGreenContract
      */
     protected $casts = [
         'full_address_array' => SafeJsonCast::class,
-        'types'               => SafeJsonCast::class,
-        'working_hours'       => SafeJsonCast::class,
-        'photos'              => SafeJsonCast::class,
-        'description'         => SafeJsonCast::class,
-        'emails_found'        => SafeJsonCast::class,
-        'socios'              => SafeJsonCast::class,
-        'rating'              => 'float',
-        'review_count'        => 'integer',
-        'is_claimed'          => 'boolean',
-        'verified'            => 'boolean',
+        'types' => SafeJsonCast::class,
+        'working_hours' => SafeJsonCast::class,
+        'photos' => SafeJsonCast::class,
+        'description' => SafeJsonCast::class,
+        'emails_found' => SafeJsonCast::class,
+        'socios' => SafeJsonCast::class,
+        'rating' => 'float',
+        'review_count' => 'integer',
+        'is_claimed' => 'boolean',
+        'verified' => 'boolean',
+        'email_verified' => 'boolean',
         'is_permanently_closed' => 'boolean',
         'is_temporarily_closed' => 'boolean',
-        'used_at'             => 'datetime',
-        'latitude'            => 'decimal:7',
-        'longitude'           => 'decimal:7',
-        'enrichment_score'    => 'integer',
-        'enriched_at'         => 'datetime',
-        'has_privacy_policy'  => 'boolean',
-        'has_dpo'             => 'boolean',
-        'data_abertura'       => 'date',
-        'capital_social'      => 'decimal:2',
-        'opcao_simples'       => 'boolean',
-        'opcao_mei'           => 'boolean',
-        'company_data_at'     => 'datetime',
+        'used_at' => 'datetime',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
+        'enrichment_score' => 'integer',
+        'enriched_at' => 'datetime',
+        'has_privacy_policy' => 'boolean',
+        'has_dpo' => 'boolean',
+        'data_abertura' => 'date',
+        'capital_social' => 'decimal:2',
+        'opcao_simples' => 'boolean',
+        'opcao_mei' => 'boolean',
+        'company_data_at' => 'datetime',
     ];
 
     /**

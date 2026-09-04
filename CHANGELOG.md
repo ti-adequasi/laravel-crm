@@ -20,6 +20,26 @@ This changelog consists of the bug & security fixes and new features being inclu
 
 * [feature] Added a "Detectar política de privacidade e DPO (LGPD)" toggle under Configuration > Lead Green > Enrichment, on by default. Lead Green's LGPD-specific enrichment (privacy-policy detection, DPO/Encarregado lookup) was a hardcoded assumption that only fits one kind of prospecting client; it's now optional, for using the CRM across other segments too. Turning it off skips the extra page fetch entirely, not just the resulting fields, and hides the corresponding grid columns. The same toggle also governs the standalone `LeadEnrichment` "Enrich" button on a regular CRM lead, since both share the same enrichment service.
 
+* [feature] Website enrichment now verifies the picked e-mail via Disify (free, no key) — a real DNS/MX check plus disposable-domain detection, shown as a "Verificado" badge next to the e-mail in a prospect's detail modal. Shared by Lead Green and the standalone `LeadEnrichment` "Enrich" button, same as every other enrichment signal.
+
+* [feature] Added ReceitaWS as a third free CNPJ lookup source, tried after BrasilAPI and CNPJá Open and before ever spending a paid CNPJá commercial credit.
+
+* [fixed] Fixed `email_quality` being written as `classifyEmail()`'s category string (`"role"`, `"person"`, ...) into a `tinyint` column instead of its numeric rank — every enrichment was silently storing a truncated/invalid value. Now stores the same weight `rankEmails()` already sorts by.
+
+* [fixed] Fixed the four non-select Lead Green search filters (phone, closed status, verified, hide-duplicates) reading as loose, unlabeled checkboxes dropped after the Site/Nota/Reviews controls, with no shared visual identity and no consistent wrap behaviour at narrower widths. Grouped under a shared "Outros" label matching the other controls' shape.
+
+* [fixed] Fixed the Lead Green prospect list overlapping and clipping text (badges touching, names splitting mid-word) at ordinary laptop widths (1024–1280px), and wrapping its row actions onto two lines even at full width for any prospect with all three actions available. The grid exposed 12 equal-width columns where most Krayin grids run 5–7; State, Category and Review Count are now hidden by default (still filterable, and Category is already visible as chips on the search page before import) and Rating/Reviews are shown as one combined cell ("★ 4.4 (3683)").
+
+* [fixed] Fixed Lead Green's "Converter em lead" row action reusing `icon-add` — the icon Admin uses everywhere else specifically for "create a new X" — for an action that transforms an existing prospect instead. Swapped to `icon-forward`, matching the "view opportunity" action already using it for a converted prospect.
+
+* [fixed] Fixed the "Convertido" status badge being a real link to the resulting opportunity with no visual indication that it's clickable, identical at rest to every other, non-clickable badge on the page. Added an underline.
+
+* [fixed] Fixed Lead Green's search filters at real phone widths: the three filter selects (Site, Nota mínima, Mínimo de avaliações) were squeezed three-across into a cramped row instead of stacking, and the "Outros" checkbox group wrapped inconsistently (sometimes one per line, sometimes two, depending on label length). Both now stack one full-width control per line below the `sm` breakpoint and keep the existing compact row layout on tablet/desktop.
+
+* [enhancement] Reorganized Lead Green's search filters from a flat row of seven unrelated controls into three labeled, visually distinct groups — Alcance (site, phone), Qualidade (rating, reviews, verified), Situação (closed, already-imported) — each grouped by the question it actually answers rather than by control type.
+
+* [feature] Renamed "Lead Green" to "Leads Google" (menu, page titles, Settings tab) — the underlying package, routes and database table keep their original technical names; only the user-facing label changed.
+
 ## **v2.2.6 (19th of Aug 2026)**
 
 * [fixed] Added the missing Chinese translations for the users grid's associated group column.

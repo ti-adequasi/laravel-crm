@@ -2,6 +2,7 @@
 
 namespace Webkul\LeadGreen\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -11,8 +12,7 @@ class CnpjService
     /**
      * Extract the first valid CNPJ found in a page's HTML.
      *
-     * @param  string  $html
-     * @return string|null  digits-only CNPJ (14 chars)
+     * @return string|null digits-only CNPJ (14 chars)
      */
     public function extractCnpj(string $html): ?string
     {
@@ -36,7 +36,7 @@ class CnpjService
      * Look up company data on BrasilAPI for a given CNPJ.
      *
      * @param  string  $cnpj  digits-only CNPJ
-     * @return array|null  normalized company fields, or null on failure
+     * @return array|null normalized company fields, or null on failure
      */
     public function lookup(string $cnpj): ?array
     {
@@ -56,7 +56,12 @@ class CnpjService
             return $data;
         }
 
-        // 3) CNPJá comercial — paga (consome crédito), só quando as grátis falham
+        // 3) ReceitaWS — grátis (limitada a ~3 req/min), backup das duas acima.
+        if ($data = $this->lookupReceitaWs($cnpj)) {
+            return $data;
+        }
+
+        // 4) CNPJá comercial — paga (consome crédito), só quando as grátis falham
         //    e respeitando o teto diário de créditos.
         if ($this->canUseCnpjaCredit()) {
             if ($data = $this->lookupCnpjaCommercial($cnpj)) {
@@ -83,7 +88,7 @@ class CnpjService
 
             return $this->normalizeBrasilApi($cnpj, $response->json());
         } catch (\Throwable $e) {
-            Log::info('CnpjService BrasilAPI failed for ' . $cnpj . ': ' . $e->getMessage());
+            Log::info('CnpjService BrasilAPI failed for '.$cnpj.': '.$e->getMessage());
 
             return null;
         }
@@ -103,7 +108,34 @@ class CnpjService
 
             return $this->normalizeCnpja($cnpj, $response->json());
         } catch (\Throwable $e) {
-            Log::info('CnpjService CNPJá Open failed for ' . $cnpj . ': ' . $e->getMessage());
+            Log::info('CnpjService CNPJá Open failed for '.$cnpj.': '.$e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
+     * ReceitaWS lookup (free, ~3 req/min — signals both a 429 and a 200
+     * with an error body on rate limit, so both are checked).
+     */
+    protected function lookupReceitaWs(string $cnpj): ?array
+    {
+        try {
+            $response = Http::timeout(20)->get("https://www.receitaws.com.br/v1/cnpj/{$cnpj}");
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $data = $response->json();
+
+            if (($data['status'] ?? null) === 'ERROR') {
+                return null;
+            }
+
+            return $this->normalizeReceitaWs($cnpj, $data);
+        } catch (\Throwable $e) {
+            Log::info('CnpjService ReceitaWS failed for '.$cnpj.': '.$e->getMessage());
 
             return null;
         }
@@ -126,14 +158,14 @@ class CnpjService
                 ->get("https://api.cnpja.com/office/{$cnpj}", ['registrations' => 'BR']);
 
             if (! $response->successful()) {
-                Log::info('CnpjService CNPJá commercial HTTP ' . $response->status() . ' for ' . $cnpj);
+                Log::info('CnpjService CNPJá commercial HTTP '.$response->status().' for '.$cnpj);
 
                 return null;
             }
 
             return $this->normalizeCnpja($cnpj, $response->json());
         } catch (\Throwable $e) {
-            Log::info('CnpjService CNPJá commercial failed for ' . $cnpj . ': ' . $e->getMessage());
+            Log::info('CnpjService CNPJá commercial failed for '.$cnpj.': '.$e->getMessage());
 
             return null;
         }
@@ -191,7 +223,7 @@ class CnpjService
      */
     protected function creditCacheKey(): string
     {
-        return 'cnpja_credits_' . now()->format('Y-m-d');
+        return 'cnpja_credits_'.now()->format('Y-m-d');
     }
 
     /**
@@ -204,14 +236,14 @@ class CnpjService
         $socios = [];
         foreach ($company['members'] ?? [] as $member) {
             $socios[] = [
-                'nome'         => $member['person']['name'] ?? null,
+                'nome' => $member['person']['name'] ?? null,
                 'qualificacao' => $member['role']['text'] ?? null,
             ];
         }
 
         $phone = null;
         if (! empty($d['phones'][0])) {
-            $phone = trim(($d['phones'][0]['area'] ?? '') . ($d['phones'][0]['number'] ?? ''));
+            $phone = trim(($d['phones'][0]['area'] ?? '').($d['phones'][0]['number'] ?? ''));
         }
 
         // Inscrição Estadual — prefer the first enabled registration (CNPJá commercial only).
@@ -219,27 +251,27 @@ class CnpjService
         $registrations = $d['registrations'] ?? [];
         $chosen = collect($registrations)->firstWhere('enabled', true) ?? ($registrations[0] ?? null);
         if ($chosen) {
-            $ie = trim(($chosen['number'] ?? '') . (! empty($chosen['state']) ? ' (' . $chosen['state'] . ')' : ''));
+            $ie = trim(($chosen['number'] ?? '').(! empty($chosen['state']) ? ' ('.$chosen['state'].')' : ''));
         }
 
         return [
-            'cnpj'               => $this->format($cnpj),
-            'razao_social'       => $this->str($company['name'] ?? null),
-            'nome_fantasia'      => $this->str($d['alias'] ?? null),
+            'cnpj' => $this->format($cnpj),
+            'razao_social' => $this->str($company['name'] ?? null),
+            'nome_fantasia' => $this->str($d['alias'] ?? null),
             'situacao_cadastral' => $this->str(($d['status'] ?? [])['text'] ?? null),
-            'data_abertura'      => $this->str($d['founded'] ?? null),
-            'cnae_code'          => $this->str(($d['mainActivity'] ?? [])['id'] ?? null),
-            'cnae_description'   => $this->str(($d['mainActivity'] ?? [])['text'] ?? null),
+            'data_abertura' => $this->str($d['founded'] ?? null),
+            'cnae_code' => $this->str(($d['mainActivity'] ?? [])['id'] ?? null),
+            'cnae_description' => $this->str(($d['mainActivity'] ?? [])['text'] ?? null),
             'inscricao_estadual' => $this->str($ie),
-            'porte'              => $this->str(($company['size'] ?? [])['text'] ?? null),
-            'natureza_juridica'  => $this->str(($company['nature'] ?? [])['text'] ?? null),
-            'capital_social'     => is_numeric($company['equity'] ?? null) ? $company['equity'] : null,
-            'company_phone'      => $this->str($phone),
-            'company_email'      => $this->str($d['emails'][0]['address'] ?? null),
-            'opcao_simples'      => isset($company['simples']['optant']) ? (bool) $company['simples']['optant'] : null,
-            'opcao_mei'          => isset($company['simei']['optant']) ? (bool) $company['simei']['optant'] : null,
-            'socios'             => $socios,
-            'company_data_at'    => now(),
+            'porte' => $this->str(($company['size'] ?? [])['text'] ?? null),
+            'natureza_juridica' => $this->str(($company['nature'] ?? [])['text'] ?? null),
+            'capital_social' => is_numeric($company['equity'] ?? null) ? $company['equity'] : null,
+            'company_phone' => $this->str($phone),
+            'company_email' => $this->str($d['emails'][0]['address'] ?? null),
+            'opcao_simples' => isset($company['simples']['optant']) ? (bool) $company['simples']['optant'] : null,
+            'opcao_mei' => isset($company['simei']['optant']) ? (bool) $company['simei']['optant'] : null,
+            'socios' => $socios,
+            'company_data_at' => now(),
         ];
     }
 
@@ -252,7 +284,7 @@ class CnpjService
 
         foreach ($d['qsa'] ?? [] as $socio) {
             $socios[] = [
-                'nome'         => $socio['nome_socio'] ?? null,
+                'nome' => $socio['nome_socio'] ?? null,
                 'qualificacao' => $socio['qualificacao_socio'] ?? null,
             ];
         }
@@ -260,23 +292,78 @@ class CnpjService
         $phone = $d['ddd_telefone_1'] ?? null;
 
         return [
-            'cnpj'               => $this->format($cnpj),
-            'razao_social'       => $this->str($d['razao_social'] ?? null),
-            'nome_fantasia'      => $this->str($d['nome_fantasia'] ?? null),
+            'cnpj' => $this->format($cnpj),
+            'razao_social' => $this->str($d['razao_social'] ?? null),
+            'nome_fantasia' => $this->str($d['nome_fantasia'] ?? null),
             'situacao_cadastral' => $this->str($d['descricao_situacao_cadastral'] ?? null),
-            'data_abertura'      => $this->str($d['data_inicio_atividade'] ?? null),
-            'cnae_code'          => $this->str($d['cnae_fiscal'] ?? null),
-            'cnae_description'   => $this->str($d['cnae_fiscal_descricao'] ?? null),
-            'porte'              => $this->str($d['porte'] ?? null),
-            'natureza_juridica'  => $this->str($d['natureza_juridica'] ?? null),
-            'capital_social'     => is_numeric($d['capital_social'] ?? null) ? $d['capital_social'] : null,
-            'company_phone'      => $this->str(is_scalar($phone ?? null) ? $phone : null),
-            'company_email'      => $this->str(is_scalar($d['email'] ?? null) ? ($d['email'] ?? null) : null),
-            'opcao_simples'      => $this->bool($d['opcao_pelo_simples'] ?? null),
-            'opcao_mei'          => $this->bool($d['opcao_pelo_mei'] ?? null),
-            'socios'             => $socios,
-            'company_data_at'    => now(),
+            'data_abertura' => $this->str($d['data_inicio_atividade'] ?? null),
+            'cnae_code' => $this->str($d['cnae_fiscal'] ?? null),
+            'cnae_description' => $this->str($d['cnae_fiscal_descricao'] ?? null),
+            'porte' => $this->str($d['porte'] ?? null),
+            'natureza_juridica' => $this->str($d['natureza_juridica'] ?? null),
+            'capital_social' => is_numeric($d['capital_social'] ?? null) ? $d['capital_social'] : null,
+            'company_phone' => $this->str(is_scalar($phone ?? null) ? $phone : null),
+            'company_email' => $this->str(is_scalar($d['email'] ?? null) ? ($d['email'] ?? null) : null),
+            'opcao_simples' => $this->bool($d['opcao_pelo_simples'] ?? null),
+            'opcao_mei' => $this->bool($d['opcao_pelo_mei'] ?? null),
+            'socios' => $socios,
+            'company_data_at' => now(),
         ];
+    }
+
+    /**
+     * Normalize the ReceitaWS payload into our column set.
+     */
+    protected function normalizeReceitaWs(string $cnpj, array $d): array
+    {
+        $socios = [];
+
+        foreach ($d['qsa'] ?? [] as $socio) {
+            $socios[] = [
+                'nome' => $socio['nome'] ?? null,
+                'qualificacao' => $socio['qual'] ?? null,
+            ];
+        }
+
+        return [
+            'cnpj' => $this->format($cnpj),
+            'razao_social' => $this->str($d['nome'] ?? null),
+            'nome_fantasia' => $this->str($d['fantasia'] ?? null),
+            'situacao_cadastral' => $this->str($d['situacao'] ?? null),
+            // "abertura" comes back as DD/MM/YYYY — Carbon::parse() elsewhere
+            // in the codebase assumes an unambiguous format (BrasilAPI already
+            // returns ISO), so this is converted here rather than passed
+            // through: a bare DD/MM/YYYY reads as US MM/DD/YYYY to Carbon
+            // whenever the day is 12 or lower, silently swapping day/month.
+            'data_abertura' => $this->parseReceitaWsDate($d['abertura'] ?? null),
+            'cnae_code' => $this->str(($d['atividade_principal'][0] ?? [])['code'] ?? null),
+            'cnae_description' => $this->str(($d['atividade_principal'][0] ?? [])['text'] ?? null),
+            'porte' => $this->str($d['porte'] ?? null),
+            'natureza_juridica' => $this->str($d['natureza_juridica'] ?? null),
+            'capital_social' => is_numeric($d['capital_social'] ?? null) ? $d['capital_social'] : null,
+            'company_phone' => $this->str($d['telefone'] ?? null),
+            'company_email' => $this->str($d['email'] ?? null),
+            'opcao_simples' => $this->bool($d['simples']['optante'] ?? null),
+            'opcao_mei' => $this->bool($d['simei']['optante'] ?? null),
+            'socios' => $socios,
+            'company_data_at' => now(),
+        ];
+    }
+
+    /**
+     * ReceitaWS's DD/MM/YYYY "abertura" as an unambiguous ISO date string.
+     */
+    protected function parseReceitaWsDate(?string $value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**

@@ -58,7 +58,11 @@
                                 </div>
                                 <div v-if="selected.email">
                                     <label class="text-xs font-medium text-gray-500">@lang('leadgreen::app.enrichment.email')</label>
-                                    <p class="mt-1"><a :href="'mailto:' + selected.email" class="text-brandColor hover:underline">@{{ selected.email }}</a></p>
+                                    <p class="mt-1 flex items-center gap-2">
+                                        <a :href="'mailto:' + selected.email" class="text-brandColor hover:underline">@{{ selected.email }}</a>
+                                        <span v-if="selected.email_verified === true" class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/20 dark:text-green-400" title="@lang('leadgreen::app.enrichment.email-verified-info')">✓ @lang('leadgreen::app.enrichment.email-verified')</span>
+                                        <span v-else-if="selected.email_verified === false" class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/20 dark:text-red-400" title="@lang('leadgreen::app.enrichment.email-unverified-info')">⚠ @lang('leadgreen::app.enrichment.email-unverified')</span>
+                                    </p>
                                 </div>
                                 <div v-if="selected.whatsapp">
                                     <label class="text-xs font-medium text-gray-500">@lang('leadgreen::app.enrichment.whatsapp')</label>

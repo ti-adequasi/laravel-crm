@@ -60,6 +60,7 @@ class LeadEnrichmentService
             'email' => null,
             'email_source' => null,
             'email_quality' => null,
+            'email_verified' => null,
             'emails_found' => [],
             'instagram' => null,
             'facebook' => null,
@@ -227,7 +228,14 @@ class LeadEnrichmentService
 
         $result['email'] = $email;
         $result['email_source'] = $email ? 'site' : null;
-        $result['email_quality'] = $email ? $this->classifyEmail($email, $domain) : null;
+        // email_quality is a tinyint column — store the numeric rank weight,
+        // not classifyEmail()'s category string.
+        $result['email_quality'] = $email ? $this->emailQualityWeight($this->classifyEmail($email, $domain)) : null;
+        // A real DNS/MX + disposable-domain check — classifyEmail() only knows
+        // the address *looks* useful, this confirms it can actually receive
+        // mail. null (not false) when Disify itself couldn't be reached, so a
+        // transient failure is never recorded as "this email is bad."
+        $result['email_verified'] = $email ? $this->verifyEmail($email) : null;
         $result['emails_found'] = $this->rankEmails($emails, $domain);
         $result['instagram'] = $socials['instagram'];
         $result['facebook'] = $socials['facebook'];
@@ -508,24 +516,61 @@ class LeadEnrichmentService
             return [];
         }
 
-        // Lower weight = better.
-        $weights = [
+        usort($emails, function ($a, $b) use ($domain) {
+            $wa = $this->emailQualityWeight($this->classifyEmail($a, $domain));
+            $wb = $this->emailQualityWeight($this->classifyEmail($b, $domain));
+
+            return $wa <=> $wb;
+        });
+
+        return $emails;
+    }
+
+    /**
+     * Numeric rank for a classifyEmail() category — lower is better. The one
+     * source of truth for both rankEmails()'s ordering and the email_quality
+     * column (a tinyint, so it needs the weight, never the category string).
+     */
+    protected function emailQualityWeight(string $category): int
+    {
+        return [
             'role' => 0,
             'person' => 1,
             'domain_other' => 2,
             'catchall' => 3,
             'generic' => 4,
             'other' => 5,
-        ];
+        ][$category] ?? 5;
+    }
 
-        usort($emails, function ($a, $b) use ($domain, $weights) {
-            $wa = $weights[$this->classifyEmail($a, $domain)] ?? 5;
-            $wb = $weights[$this->classifyEmail($b, $domain)] ?? 5;
+    /**
+     * Verify an e-mail's real-world deliverability via Disify (free, no
+     * key) — a genuine DNS/MX check plus disposable-domain detection, which
+     * no amount of regex on the scraped HTML could tell us. null (not
+     * false) when Disify itself is unreachable — a transient failure here
+     * must never read as "this address is bad."
+     */
+    protected function verifyEmail(string $email): ?bool
+    {
+        try {
+            $response = Http::timeout(10)->get('https://www.disify.com/api/email/'.urlencode($email));
 
-            return $wa <=> $wb;
-        });
+            if (! $response->successful()) {
+                return null;
+            }
 
-        return $emails;
+            $data = $response->json();
+
+            if (! isset($data['dns'], $data['disposable'])) {
+                return null;
+            }
+
+            return $data['dns'] && ! $data['disposable'];
+        } catch (\Throwable $e) {
+            Log::info('LeadEnrichment Disify verification failed for '.$email.': '.$e->getMessage());
+
+            return null;
+        }
     }
 
     /**

@@ -68,3 +68,17 @@ php artisan test --compact   # run the Pest test suite
 - Add tests for new behavior; follow the `pest-testing` skill.
 - Run `./vendor/bin/pint` before committing — CI applies Pint formatting.
 - Validate the skills setup with `bash bin/validate-skills.sh`.
+
+---
+
+## UI/UX Review
+
+Any change touching an admin-facing Blade/Vue view
+(`packages/Webkul/*/src/Resources/views/**/*.blade.php`) gets a visual
+design/UX pass — checked in a real browser, against Krayin's own existing
+conventions (buttons, modals, badges, spacing, dark mode), not general
+best-practice — before the change is considered done. This is a standing
+practice for every such change, not a one-off ask.
+
+**Claude Code**: use the `design-ux-reviewer` subagent
+(`.claude/agents/design-ux-reviewer.md`) — see CLAUDE.md.

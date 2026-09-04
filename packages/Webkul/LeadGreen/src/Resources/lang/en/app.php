@@ -2,14 +2,14 @@
 
 return [
     'acl' => [
-        'title' => 'Lead Green',
+        'title' => 'Google Leads',
     ],
 
     'menu' => [
-        'title' => 'Lead Green',
+        'title' => 'Google Leads',
     ],
 
-    'title' => 'Lead Green',
+    'title' => 'Google Leads',
     'search-button' => 'Search Google Maps',
 
     'search' => [
@@ -28,7 +28,7 @@ return [
         'success' => ':inserted imported and :converted converted to opportunities, :skipped skipped (of :found selected).',
 
         'error' => [
-            'no-api-key' => 'No RapidAPI key configured — add one under Configuration > Lead Green.',
+            'no-api-key' => 'No RapidAPI key configured — add one under Configuration > Google Leads.',
             'request-failed' => 'The Google Maps search failed (HTTP :status).',
             'expired' => 'This search preview has expired — search again.',
         ],
@@ -43,6 +43,9 @@ return [
             'min-reviews' => 'Minimum reviews',
             'has-phone' => 'Has a phone number',
             'hide-duplicates' => 'Hide already-imported',
+            'group-reach' => 'Reach',
+            'group-quality' => 'Quality',
+            'group-status' => 'Status',
             'hide-closed' => 'Hide temporarily closed',
             'verified-only' => 'Verified only',
             'any' => 'Any',
@@ -104,6 +107,10 @@ return [
         'not-enriched' => 'Not enriched yet.',
         'success' => 'Prospect enriched successfully.',
         'email' => 'Email',
+        'email-verified' => 'Verified',
+        'email-verified-info' => 'The domain exists and accepts mail, and is not a disposable provider (checked via Disify).',
+        'email-unverified' => 'Unconfirmed',
+        'email-unverified-info' => 'The domain didn\'t respond or is a disposable email provider — may not be a real address.',
         'whatsapp' => 'WhatsApp',
         'instagram' => 'Instagram',
         'facebook' => 'Facebook',
@@ -160,7 +167,7 @@ return [
     ],
 
     'settings' => [
-        'tab' => 'Lead Green',
+        'tab' => 'Google Leads',
         'tab-info' => 'Google Maps prospecting and enrichment',
         'section' => 'Settings',
         'section-info' => 'API keys used for prospecting and enrichment',

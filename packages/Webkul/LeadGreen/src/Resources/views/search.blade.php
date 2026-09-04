@@ -69,80 +69,99 @@
                              They all read straight off provider fields (website, rating, review
                              count, phone, closed status, verified) that exist for any query, so
                              none of them need to see a result first. Re-usable live if changed
-                             after a search too, but nothing here is *gated* on having searched. -->
-                        <div class="flex flex-col gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
-                            <label class="font-medium text-gray-800 dark:text-white">
-                                @lang('leadgreen::app.search.filters.section-title')
-                            </label>
+                             after a search too, but nothing here is *gated* on having searched.
+                             Grouped by what question each filter actually answers (can I reach
+                             them / are they any good / should this even show up) rather than by
+                             control type — reads as three deliberate decisions, not a flat pile
+                             of seven unrelated inputs. -->
+                        <div class="flex flex-col gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <label class="font-medium text-gray-800 dark:text-white">
+                                    @lang('leadgreen::app.search.filters.section-title')
+                                </label>
 
-                            <div class="flex flex-wrap items-end gap-4">
-                                <div class="flex flex-col gap-1">
-                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.website')</label>
-                                    <select
-                                        v-model="filters.hasWebsite"
-                                        class="custom-select rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                    >
-                                        <option value="yes">@lang('leadgreen::app.search.filters.website-yes')</option>
-                                        <option value="all">@lang('leadgreen::app.search.filters.website-all')</option>
-                                        <option value="no">@lang('leadgreen::app.search.filters.website-no')</option>
-                                    </select>
-                                </div>
+                                <span v-if="preview" class="text-sm text-gray-500 dark:text-gray-400">
+                                    @{{ filteredLeads.length }} / @{{ preview.leads.length }}
+                                </span>
+                            </div>
 
-                                <div class="flex flex-col gap-1">
-                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.min-rating')</label>
-                                    <select
-                                        v-model.number="filters.minRating"
-                                        class="custom-select rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                    >
-                                        <option :value="0">@lang('leadgreen::app.search.filters.any')</option>
-                                        <option :value="3">★ 3+</option>
-                                        <option :value="3.5">★ 3.5+</option>
-                                        <option :value="4">★ 4+</option>
-                                        <option :value="4.5">★ 4.5+</option>
-                                    </select>
-                                </div>
+                            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                <div class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                                    <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                        <span class="icon-call"></span>
+                                        @lang('leadgreen::app.search.filters.group-reach')
+                                    </div>
 
-                                <div class="flex flex-col gap-1">
-                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.min-reviews')</label>
-                                    <input
-                                        type="number"
-                                        v-model.number="filters.minReviews"
-                                        min="0"
-                                        placeholder="0"
-                                        class="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                    />
-                                </div>
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.website')</label>
+                                        <select
+                                            v-model="filters.hasWebsite"
+                                            class="custom-select w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        >
+                                            <option value="yes">@lang('leadgreen::app.search.filters.website-yes')</option>
+                                            <option value="all">@lang('leadgreen::app.search.filters.website-all')</option>
+                                            <option value="no">@lang('leadgreen::app.search.filters.website-no')</option>
+                                        </select>
+                                    </div>
 
-                                <div class="flex flex-col gap-1">
                                     <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
                                         <input type="checkbox" v-model="filters.hasPhone" />
                                         @lang('leadgreen::app.search.filters.has-phone')
                                     </label>
                                 </div>
 
-                                <div class="flex flex-col gap-1">
-                                    <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
-                                        <input type="checkbox" v-model="filters.hideClosed" />
-                                        @lang('leadgreen::app.search.filters.hide-closed')
-                                    </label>
-                                </div>
+                                <div class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                                    <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                        <span class="icon-success"></span>
+                                        @lang('leadgreen::app.search.filters.group-quality')
+                                    </div>
 
-                                <div class="flex flex-col gap-1">
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.min-rating')</label>
+                                        <select
+                                            v-model.number="filters.minRating"
+                                            class="custom-select w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        >
+                                            <option :value="0">@lang('leadgreen::app.search.filters.any')</option>
+                                            <option :value="3">★ 3+</option>
+                                            <option :value="3.5">★ 3.5+</option>
+                                            <option :value="4">★ 4+</option>
+                                            <option :value="4.5">★ 4.5+</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.filters.min-reviews')</label>
+                                        <input
+                                            type="number"
+                                            v-model.number="filters.minReviews"
+                                            min="0"
+                                            placeholder="0"
+                                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                        />
+                                    </div>
+
                                     <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
                                         <input type="checkbox" v-model="filters.verifiedOnly" />
                                         @lang('leadgreen::app.search.filters.verified-only')
                                     </label>
                                 </div>
 
-                                <div class="flex flex-col gap-1">
+                                <div class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/40">
+                                    <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                        <span class="icon-filter"></span>
+                                        @lang('leadgreen::app.search.filters.group-status')
+                                    </div>
+
+                                    <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <input type="checkbox" v-model="filters.hideClosed" />
+                                        @lang('leadgreen::app.search.filters.hide-closed')
+                                    </label>
+
                                     <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
                                         <input type="checkbox" v-model="filters.hideDuplicates" />
                                         @lang('leadgreen::app.search.filters.hide-duplicates')
                                     </label>
-                                </div>
-
-                                <div v-if="preview" class="ml-auto text-sm text-gray-500 dark:text-gray-400">
-                                    @{{ filteredLeads.length }} / @{{ preview.leads.length }}
                                 </div>
                             </div>
                         </div>
@@ -309,7 +328,7 @@
 
                         <template v-else>
                             <div class="flex flex-col items-end gap-1">
-                                <div class="flex items-center gap-2">
+                                <div class="flex flex-col gap-1">
                                     <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadgreen::app.search.preview.pipeline-label')</label>
                                     <select
                                         v-model.number="selectedPipelineId"
