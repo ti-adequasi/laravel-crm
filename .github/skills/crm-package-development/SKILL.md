@@ -1,6 +1,6 @@
 ---
 name: crm-package-development
-description: Use when creating a new Krayin CRM package or module, extending CRM functionality via a package, or adding custom business logic without modifying core files. Also use for any translation work — adding or moving lang files, adding a locale, or deciding whether a package gets its own Resources/lang directory — and whenever a fix or feature needs a CHANGELOG.md entry. Covers Laravel package structure, service providers, migrations, models, repositories, routes, controllers, views, localization, changelog entries, config, ACL, and menus — including which of the two module shapes to build, the four files that wire a module into the app, and how to override a model or hook into an existing one (Contract/Proxy rebinding, before/after events) without editing core.
+description: Use when creating a new Krayin CRM package or module, extending CRM functionality via a package, or adding custom business logic without modifying core files. Also use for any translation work — adding or moving lang files, adding a locale, or deciding whether a package gets its own Resources/lang directory — and whenever a fix or feature needs a CHANGELOG.md entry. Covers Laravel package structure, service providers, migrations, models, repositories, routes, controllers, views, localization, changelog entries, config, ACL, and menus — including which of the two module shapes to build, the four files that wire a module into the app, how to override a model or hook into an existing one (Contract/Proxy rebinding, before/after events, view_render_event, vendor:publish view override) without editing core, scaffolding a package with the krayin-package-generator Artisan commands, building a DataGrid list view, and wiring a new model into Krayin's custom-attribute (EAV) system.
 ---
 
 # Skill: CRM Package Development (Krayin CRM)
@@ -106,6 +106,13 @@ no-op, class-not-found):
 | `config/concord.php` → `modules` | `NameModuleServiceProvider::class` | Registers `$models` with Concord — required for the override pattern below |
 | — | `composer dump-autoload` | Regenerates the class map after the first edit above |
 
+Krayin's own official package-creation guide (devdocs.krayincrm.com) shows
+registering the provider in `config/app.php`'s `providers` array instead —
+that's stale for this codebase. This is Laravel 12; `bootstrap/providers.php`
+replaced that array, and `config/app.php` here has zero `ServiceProvider::class`
+entries (`grep -c ServiceProvider::class config/app.php` → `0`). Trust the
+table above, not that page.
+
 If the module is self-contained and ships `Config/acl.php` / `Config/menu.php`,
 merge them into the running config yourself — nothing else does it. In the
 plain provider's `register()`:
@@ -118,11 +125,34 @@ public function register(): void
 }
 ```
 
-Both files return a plain indexed array (see §5's examples) — `mergeConfigFrom`
-concatenates it onto whatever every other package already contributed to
-`menu.admin` / `acl`, in provider-boot order. Skip this and the routes and
-Blade views work fine, but the page never appears in the sidebar and nothing
-enforces access to it.
+Both files return a plain indexed array — `mergeConfigFrom` concatenates it
+onto whatever every other package already contributed to `menu.admin` / `acl`,
+in provider-boot order. Skip this and the routes and Blade views work fine,
+but the page never appears in the sidebar and nothing enforces access to it.
+
+```php
+// Config/menu.php
+return [
+    ['key' => 'your_module', 'name' => 'your_module::app.menu.title',
+     'route' => 'admin.your_module.index', 'sort' => 6, 'icon-class' => 'icon-leads'],
+];
+
+// Config/acl.php — dot-notation nests a child permission under its parent
+// group; `route` takes a single name or an array (Admin's own acl.php guards
+// create+store with one key: 'route' => ['admin.leads.create', 'admin.leads.store']).
+return [
+    ['key' => 'your_module', 'name' => 'your_module::app.acl.title',
+     'route' => 'admin.your_module.index', 'sort' => 6],
+    ['key' => 'your_module.delete', 'name' => 'admin::app.acl.delete',
+     'route' => 'admin.your_module.destroy', 'sort' => 2],
+];
+```
+
+Gate the corresponding feature with the key you just added:
+`bouncer()->hasPermission('your_module.delete')` (defined at
+`packages/Webkul/Admin/src/Http/helpers.php`, 66 call sites across the
+codebase) — `abort(401, ...)` in the controller, `@if (...) ... @endif`
+around the control in Blade so a user who can't act doesn't see it at all.
 
 Don't be misled by each package's own `composer.json` (declares a name like
 `krayin/laravel-lead` and an `extra.laravel.providers` block) — it is **not**
@@ -130,6 +160,105 @@ what wires the package into this app. Root `composer.json` never `require`s
 these package names and `vendor/krayin/` carries no such package; that file
 exists only so the package could be published standalone to Packagist. The
 four wires above are the only thing actually running.
+
+---
+
+## Scaffolding With `krayin-package-generator`
+
+`krayin/krayin-package-generator` is a dev dependency of this repo
+(root `composer.json`) and adds a family of `package:make*` Artisan commands
+(`php artisan list | grep package:make` for the live set):
+
+| Command | Scaffolds |
+|---|---|
+| `package:make Webkul/Name` | the whole self-contained shape: provider, module provider, controller, route file, `Config/menu.php` + `Config/acl.php` stubs, and its own `package.json`/`vite.config.js`/`tailwind.config.js`/`postcss.config.js` |
+| `package:make-model-contract`, `-model-proxy`, `-model` | the Contract/Proxy/Model trio |
+| `package:make-repository` | a repository stub extending the base `Repository` |
+| `package:make-datagrid` | a `DataGrid` subclass (see below) |
+| `package:make-event`, `-listener` | an event class / listener class |
+| `package:make-migration`, `-seeder`, `-controller`, `-request`, `-route`, `-provider`, `-module-provider`, `-command`, `-mail`, `-notification`, `-middleware` | the matching single file |
+
+**It only writes files under `packages/Webkul/Name/`.** Confirmed by reading
+`vendor/krayin/krayin-package-generator/src/Generators/PackageGenerator.php`:
+it never edits root `composer.json`, `bootstrap/providers.php`, or
+`config/concord.php`, and never runs `composer dump-autoload`. The four wires
+above are still 100% manual, generator or not — it saves typing, not the
+registration steps.
+
+The `package.json`/`vite.config.js`/`tailwind.config.js` it generates for a
+plain `package:make` are usually dead weight — see the Tailwind section below
+before running `npm install`/`npm run build` inside a freshly scaffolded
+package.
+
+---
+
+## DataGrids: The List-View Pattern
+
+Every index page that lists records — the self-contained shape's own admin
+UI included — uses a `DataGrid` subclass, not a hand-rolled Blade table.
+`packages/Webkul/DataGrid` provides the base class; your package supplies a
+subclass under its own `DataGrids/` folder implementing three methods:
+
+```php
+namespace Webkul\YourModule\DataGrids;
+
+use Illuminate\Support\Facades\DB;
+use Webkul\DataGrid\DataGrid;
+
+class YourModuleDataGrid extends DataGrid
+{
+    public function prepareQueryBuilder()
+    {
+        $queryBuilder = DB::table('your_table')->select('your_table.id', 'your_table.name');
+
+        $this->addFilter('name', 'your_table.name'); // 2nd arg matters once a join makes the column name ambiguous
+
+        return $queryBuilder;
+    }
+
+    public function prepareColumns(): void
+    {
+        $this->addColumn([
+            'index' => 'name',
+            'label' => trans('your_module::app.datagrid.name'),
+            'type' => 'string', // string|integer|float|boolean|date|datetime|aggregate — anything else throws InvalidColumnTypeException
+            'searchable' => true,
+            'filterable' => true,
+            'sortable' => true,
+            'visibility' => true, // shown by default; false still leaves it filterable/sortable, just hidden until the user's column picker re-enables it
+        ]);
+    }
+
+    public function prepareActions(): void {} // required even with nothing to add — see LeadGreenDataGrid
+}
+```
+
+Wire it into the controller's `index()` — verified real pattern at
+`packages/Webkul/LeadGreen/src/Http/Controllers/LeadGreenController.php:24-25`:
+
+```php
+public function index()
+{
+    if (request()->ajax()) {
+        return datagrid(YourModuleDataGrid::class)->process();
+    }
+
+    return view('your_module::index');
+}
+```
+
+and render it inside `<x-admin::layouts>` with
+`<x-admin::datagrid :src="route('admin.your_module.index')" />` — both halves
+together, working, at `packages/Webkul/LeadGreen/src/Resources/views/index.blade.php`.
+
+Krayin's own devdocs (`devdocs.krayincrm.com/2.2/packages/datagrid.html`) list
+`'number'` and `'dropdown'` as column `type`s. Neither exists —
+`Webkul\DataGrid\Enums\ColumnTypeEnum` only recognizes the seven values in
+the comment above, and `Column::resolveType()` throws
+`InvalidColumnTypeException` for anything else. That's at least a loud
+runtime error rather than a silent failure, but it means the docs' own
+example code doesn't run — verify column `type` against the enum, not the
+devdocs page.
 
 ---
 
@@ -187,8 +316,33 @@ all. It's still self-contained: own `Controller`, `Route`, `Resources/views`,
 own provider — just with an empty data layer. `LeadEnrichment` is a real
 example: one route, one injected button, zero tables.
 
-Edit the core file directly only when neither mechanism covers the change,
-and say so explicitly in the PR description.
+**4. `vendor:publish` view override — replaces a whole core view, not just a
+point inside it.** Ship a same-path replacement under your package's
+`Resources/views/` and publish it to Laravel's vendor-override location from
+your provider's `boot()`:
+
+```php
+$this->publishes([
+    __DIR__.'/../Resources/views/quotes/create.blade.php' =>
+        resource_path('views/vendor/admin/quotes/create.blade.php'),
+]);
+```
+
+`php artisan vendor:publish` (select your provider) copies it there, and
+Laravel's view finder checks `resources/views/vendor/<namespace>/...` before
+any package's own `loadViewsFrom()` path — Admin registers the `admin`
+namespace at `packages/Webkul/Admin/src/Providers/AdminServiceProvider.php:50`,
+so `vendor/admin/...` is the right prefix for overriding one of its views.
+Reach for this only when #3 (`view_render_event`) genuinely has no hook point
+for the change — the tradeoff is real: the file Laravel actually renders now
+lives in `resources/views/vendor/admin/...`, outside every package, so it
+never receives whatever upstream Krayin does to that view on a future
+`git merge upstream/2.2`. Your package's copy under `Resources/views/` is
+only the template `vendor:publish` copied from; the published file is what's
+live, and it's on you to notice when core's version moves on without it.
+
+Edit the core file directly only when none of the four mechanisms above
+covers the change, and say so explicitly in the PR description.
 
 ---
 
@@ -227,6 +381,21 @@ rerun (`cd packages/Webkul/Admin && npm install && npm run build` —
 `npm run build` at the repo root only rebuilds `public/build/`, a different
 Vite context entirely) and the browser was checked again.
 
+There's a third trap the `krayin-package-generator` scaffold walks you
+straight into: `package:make` gives every new package its own
+`package.json`/`vite.config.js`/`tailwind.config.js` (see above), which looks
+like the fix but usually isn't. A package-local build is only right when your
+pages never load Admin's compiled bundle in the first place — `WebForm` is
+the real example: its Vite config builds to `public/webform/build`
+(`packages/Webkul/WebForm/vite.config.js`) for a form-embed script that runs
+on a third-party site, and none of its Blade files use `<x-admin::layouts>`.
+If your page *does* render inside `<x-admin::layouts>` — the normal case,
+e.g. `LeadGreen`, `Sandbox` — running `npm run build` inside your own package
+produces a bundle nothing ever loads, while your actual page keeps reading
+Admin's. Either delete the generator's own `vite.config.js`/
+`tailwind.config.js`/`package.json`, or just never build them, and rely on
+Admin's `content` array and Admin's build as described above.
+
 ---
 
 ## A Custom Attribute You're Relying On May Not Exist
@@ -252,6 +421,74 @@ if (! DB::table('attributes')->where('code', 'site')->where('entity_type', 'orga
 
 Leave `down()` empty — dropping the attribute would silently discard real
 data on it.
+
+---
+
+## Making a New Model Use Krayin's Custom Attributes (EAV)
+
+The section above assumes your entity already participates in the attribute
+system (`organizations` does). To make a **new** model support it —
+admin-defined custom fields with no migration per field — three things,
+verified against `Lead`, which does exactly this:
+
+**1. Register the entity type**, merged the same way as `acl.php`:
+
+```php
+// Config/attribute_entity_types.php
+return [
+    'your_entities' => [
+        'name' => 'your_module::app.your-entities.title',
+        'repository' => 'Webkul\YourModule\Repositories\YourEntityRepository',
+    ],
+];
+```
+
+merged in `register()` the same way:
+
+```php
+$this->mergeConfigFrom(dirname(__DIR__).'/Config/attribute_entity_types.php', 'attribute_entity_types');
+```
+
+**2. Add the trait to the model** —
+`packages/Webkul/Lead/src/Models/Lead.php:12,22`:
+
+```php
+use Webkul\Attribute\Traits\CustomAttribute;
+
+class Lead extends Model implements LeadContract
+{
+    use CustomAttribute, LogsActivity;
+```
+
+**3. Persist values from the repository** — inject `AttributeValueRepository`
+and call `save()` after both `create()` and `update()`
+(`packages/Webkul/Lead/src/Repositories/LeadRepository.php:48,146`):
+
+```php
+public function create(array $data)
+{
+    $lead = parent::create($data);
+
+    $this->attributeValueRepository->save(array_merge($data, [
+        'entity_id' => $lead->id,
+    ]));
+
+    return $lead;
+}
+```
+
+**Krayin's official docs get this call wrong.**
+`devdocs.krayincrm.com/2.2/custom-attributes/model-custom-attribute.html`
+shows `$this->attributeValueRepository->save($data, $example->id);`. Don't
+copy that: `save()`'s real signature is `save(array $data, $attributes = [])`
+(`packages/Webkul/Attribute/src/Repositories/AttributeValueRepository.php:40`)
+— the second parameter is an optional list of `Attribute` records to restrict
+the save to, not an entity ID. Pass an integer there and `empty($attributes)`
+is `false`, so it skips the auto-lookup and goes straight to
+`foreach ($attributes as $attribute)` over that integer — PHP warns and the
+loop simply never runs, so no attribute values get saved, with nothing in the
+response to say why. `entity_id` (and `entity_type`) belong **inside** the
+`$data` array, exactly as `LeadRepository` does it above.
 
 ---
 
@@ -378,9 +615,10 @@ call so the provider does not point at a path that no longer exists.
 
 ### Working with Admin lang files
 
-- Admin ships one `app.php` per locale: `ar`, `en`, `es`, `fa`, `ko`, `pt_BR`,
-  `tr`, `vi`, `zh_CN`. **Add every new key to all of them in the same change** —
-  a key present only in `en` renders as the raw key string in other locales.
+- Admin ships one `app.php` per locale: `ar`, `en`, `es`, `fa`, `ja`, `ko`,
+  `pt_BR`, `tr`, `vi`, `zh_CN`. **Add every new key to all of them in the same
+  change** — a key present only in `en` renders as the raw key string in
+  other locales.
 - If a real translation is unavailable, use the English text as the value. Never
   omit the key, and never leave the key name as its own value.
 - Preserve placeholders exactly: `:attribute`, `:days`, `:count` (Laravel) and
@@ -413,6 +651,47 @@ php artisan tinker --execute='app()->setLocale("<locale>"); echo trans("admin::a
 ```
 
 A key that resolves to its own name (`admin::app.foo.bar`) is missing.
+
+---
+
+## Official Krayin Documentation
+
+Krayin publishes developer docs at devdocs.krayincrm.com (architecture,
+package/model/repository/DataGrid/ACL guides, events, custom attributes, a
+REST API) and an end-user guide at docs.krayincrm.com. Two things worth
+knowing before reaching for either:
+
+- **They can lag this repo's actual conventions.** Confirmed examples above:
+  the package-creation guide's `config/app.php` provider registration ("Wiring
+  a Module In"), the custom-attributes guide's broken `save()` call, and the
+  DataGrid guide's nonexistent column types. Treat anything code-shaped from
+  either site as a claim to verify against the real source in
+  `packages/Webkul/`, not as ground truth.
+- **`devdocs.krayincrm.com/llms-full.txt`** is Krayin's own maintained,
+  single-file architectural reference (the llms.txt convention) — a faster
+  way to re-scan "did anything change" on a future Krayin upgrade than
+  re-crawling the site page by page.
+
+This skill file and `pest-testing` are themselves upstream Krayin 2.2
+artifacts, not something specific to this fork — they arrived via real
+upstream PRs (`git log --oneline | grep -i skill` shows `add-agent-skills`
+merges), and the canonical-source/symlink layout (`.github/skills/` →
+`.claude`, `.codex`, `.cursor`, `.kilocode`, `.ai`) is Krayin's own documented
+convention, checked by `bash bin/validate-skills.sh`. Run that validator
+after editing this file. It also means a future `git merge upstream/2.2` can
+bring upstream's *own* edits to this exact file — read a conflict there as
+"reconcile with upstream's update," not as noise to discard.
+
+One known false positive in that validator: its "SKILL.md outside canonical
+source" check only prunes a root-level `./node_modules`
+(`bin/validate-skills.sh`'s `find` call), not a nested one — so once you've
+followed the Tailwind section above and run `npm install` inside
+`packages/Webkul/Admin`, the validator starts failing on bundled
+`SKILL.md` files under `packages/Webkul/Admin/node_modules/playwright-core/`.
+That's npm's Playwright package, not a real stray skill; `git status` on that
+path stays clean because `packages/Webkul/Admin/.gitignore` already excludes
+`node_modules`. A failure naming any other path is real — don't reflexively
+wave off every red result.
 
 ---
 

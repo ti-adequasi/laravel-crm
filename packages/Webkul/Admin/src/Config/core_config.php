@@ -236,6 +236,29 @@ return [
                 'type' => 'boolean',
                 'channel_based' => true,
             ], [
+                'name' => 'provider',
+                'title' => 'admin::app.configuration.index.magic-ai.settings.provider',
+                'type' => 'select',
+                'depends' => 'enable:1',
+                'validation' => 'required_if:enable,1',
+                'default' => 'openrouter',
+                'info' => 'admin::app.configuration.index.magic-ai.settings.provider-info',
+                'options' => [
+                    [
+                        'title' => 'admin::app.configuration.index.magic-ai.settings.providers.openrouter',
+                        'value' => 'openrouter',
+                    ], [
+                        'title' => 'admin::app.configuration.index.magic-ai.settings.providers.openai',
+                        'value' => 'openai',
+                    ], [
+                        'title' => 'admin::app.configuration.index.magic-ai.settings.providers.anthropic',
+                        'value' => 'anthropic',
+                    ], [
+                        'title' => 'admin::app.configuration.index.magic-ai.settings.providers.omniroute',
+                        'value' => 'omniroute',
+                    ],
+                ],
+            ], [
                 'name' => 'api_key',
                 'title' => 'admin::app.configuration.index.magic-ai.settings.api-key',
                 'type' => 'password',
@@ -243,11 +266,21 @@ return [
                 'validation' => 'required_if:enable,1',
                 'info' => 'admin::app.configuration.index.magic-ai.settings.api-key-info',
             ], [
+                'name' => 'omniroute_base_url',
+                'title' => 'admin::app.configuration.index.magic-ai.settings.omniroute-base-url',
+                'type' => 'text',
+                'depends' => 'provider:omniroute',
+                'validation' => 'required_if:provider,omniroute',
+                'info' => 'admin::app.configuration.index.magic-ai.settings.omniroute-base-url-info',
+                'default' => null,
+            ], [
                 'name' => 'model',
                 'title' => 'admin::app.configuration.index.magic-ai.settings.models.title',
                 'type' => 'select',
                 'channel_based' => true,
-                'depends' => 'enable:1',
+                'depends' => 'provider:openrouter',
+                'validation' => 'required_if:provider,openrouter',
+                'info' => 'admin::app.configuration.index.magic-ai.settings.models.info',
                 'options' => [
                     [
                         'title' => 'admin::app.configuration.index.magic-ai.settings.models.gpt-4o',
@@ -276,6 +309,7 @@ return [
                 'info' => 'admin::app.configuration.index.magic-ai.settings.other-model',
                 'default' => null,
                 'depends' => 'enable:1',
+                'validation' => 'required_unless:provider,openrouter',
             ],
         ],
     ], [
