@@ -137,6 +137,15 @@ return [
      'route' => 'admin.your_module.index', 'sort' => 6, 'icon-class' => 'icon-leads'],
 ];
 
+// A route gated by something other than ACL — e.g. Tenant's own
+// EnsureSuperAdmin middleware — still needs its menu entry hidden from
+// everyone that gate would turn away; bouncer()->hasPermission() has no
+// concept of that gate, so it can't do this on its own. Add
+// 'super_admin_only' => true and Webkul\Core\Menu (see Menu.php) hides
+// the item from any user with a tenant_id — otherwise a tenant-scoped
+// admin with an unrestricted ('all') role sees the link and gets a 403
+// clicking it.
+
 // Config/acl.php — dot-notation nests a child permission under its parent
 // group; `route` takes a single name or an array (Admin's own acl.php guards
 // create+store with one key: 'route' => ['admin.leads.create', 'admin.leads.store']).
@@ -404,6 +413,18 @@ to that shape:
   `redirect()->back()` is correct there because that endpoint is a plain
   form post — copy `response()->json([...])` from a genuinely AJAX-driven
   controller (e.g. this same `UserMailAccountController`) instead.
+- **Two independent `<x-admin::form>` instances on the same page must not
+  share a field `name`.** HTML `name` is what actually reaches the server —
+  giving a second, unrelated form's field the same `name` as one already on
+  the page (both innocently called `name`, say) makes them the same DOM
+  target for anything that queries by that attribute, and this codebase's
+  vee-validate wiring tracks field state by name too, so the two forms'
+  validation cross-talks (an error on one field shows under the other one's
+  label). `packages/Webkul/Tenant/src/Resources/views/edit.blade.php` hit
+  this with a tenant-edit form and a same-page "add a user to this tenant"
+  form both wanting a plain `name` field — fixed by namespacing the second
+  form's fields (`new_user_name`, not `name`), not by giving it a different
+  `id` alone (`id` isn't what gets submitted).
 
 **4. `vendor:publish` view override — replaces a whole core view, not just a
 point inside it.** Ship a same-path replacement under your package's

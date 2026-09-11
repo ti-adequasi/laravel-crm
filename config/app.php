@@ -66,6 +66,14 @@ return [
 
     'admin_path' => env('APP_ADMIN_PATH', 'admin'),
 
+    /*
+     * URL prefix for the super-admin-only tenant management area
+     * (packages/Webkul/Tenant) — deliberately separate from admin_path so
+     * tenant/user provisioning never mixes into a tenant-scoped admin's
+     * own sidebar and URLs.
+     */
+    'super_admin_path' => env('APP_SUPER_ADMIN_PATH', 'super_admin'),
+
     'asset_url' => env('ASSET_URL'),
 
     /*

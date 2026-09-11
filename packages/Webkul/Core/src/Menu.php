@@ -84,6 +84,7 @@ class Menu
             case self::ADMIN:
                 $this->configMenu = $configMenu
                     ->filter(fn ($item) => bouncer()->hasPermission($item['key']))
+                    ->filter(fn ($item) => empty($item['super_admin_only']) || $this->currentUserIsSuperAdmin())
                     ->toArray();
                 break;
 
@@ -148,6 +149,23 @@ class Menu
             ->findWhere([['code', 'like', $prefix.'%']], ['code', 'value'])
             ->mapWithKeys(fn ($config) => [Str::after($config->code, $prefix) => $config->value])
             ->all();
+    }
+
+    /**
+     * Whether the logged-in admin is a super-admin (no tenant assigned) —
+     * the same definition Webkul\Tenant\Http\Middleware\EnsureSuperAdmin
+     * gates routes with. A menu item marked `super_admin_only` in its
+     * Config/menu.php entry (e.g. Tenant's own) is hidden from every other
+     * user; ACL alone can't express this, since `permission_type == 'all'`
+     * means "every permission within my own tenant", not "super-admin" —
+     * a tenant-scoped admin legitimately holding that role would otherwise
+     * see the link and be turned away by EnsureSuperAdmin on click.
+     */
+    private function currentUserIsSuperAdmin(): bool
+    {
+        $user = auth()->guard('user')->user();
+
+        return $user && is_null($user->tenant_id);
     }
 
     /**
