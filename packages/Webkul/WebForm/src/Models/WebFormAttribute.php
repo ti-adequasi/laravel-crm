@@ -4,10 +4,13 @@ namespace Webkul\WebForm\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Attribute\Models\AttributeProxy;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\WebForm\Contracts\WebFormAttribute as WebFormAttributeContract;
 
 class WebFormAttribute extends Model implements WebFormAttributeContract
 {
+    use BelongsToTenant;
+
     /**
      * Indicates if the model should be timestamped.
      *
@@ -21,6 +24,7 @@ class WebFormAttribute extends Model implements WebFormAttributeContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'placeholder',
         'is_required',

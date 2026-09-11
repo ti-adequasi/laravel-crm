@@ -5,15 +5,19 @@ namespace Webkul\DataTransfer\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Webkul\DataTransfer\Contracts\Import as ImportContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Import extends Model implements ImportContract
 {
+    use BelongsToTenant;
+
     /**
      * The attributes that are mass assignable.
      *
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'state',
         'process_in_queue',
         'type',

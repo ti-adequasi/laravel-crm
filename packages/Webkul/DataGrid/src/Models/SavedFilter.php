@@ -5,9 +5,11 @@ namespace Webkul\DataGrid\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Webkul\DataGrid\Contracts\SavedFilter as SavedFilterContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class SavedFilter extends Model implements SavedFilterContract
 {
+    use BelongsToTenant;
     use HasFactory;
 
     /**
@@ -23,6 +25,7 @@ class SavedFilter extends Model implements SavedFilterContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'user_id',
         'src',
         'name',

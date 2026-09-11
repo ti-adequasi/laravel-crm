@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Webkul\Contact\Models\PersonProxy;
 use Webkul\GoogleContact\Contracts\ContactExportBatchItem as ContactExportBatchItemContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class ContactExportBatchItem extends Model implements ContactExportBatchItemContract
 {
+    use BelongsToTenant;
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_DUPLICATE = 'duplicate';
@@ -30,6 +33,7 @@ class ContactExportBatchItem extends Model implements ContactExportBatchItemCont
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'batch_id',
         'person_id',
         'status',

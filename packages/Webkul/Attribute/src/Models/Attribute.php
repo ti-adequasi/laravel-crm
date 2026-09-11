@@ -4,15 +4,19 @@ namespace Webkul\Attribute\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Attribute\Contracts\Attribute as AttributeContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Attribute extends Model implements AttributeContract
 {
+    use BelongsToTenant;
+
     /**
      * The attributes that are mass assignable.
      *
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'code',
         'name',
         'type',

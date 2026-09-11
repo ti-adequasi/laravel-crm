@@ -4,9 +4,12 @@ namespace Webkul\Quote\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Quote\Contracts\QuoteItem as QuoteItemContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class QuoteItem extends Model implements QuoteItemContract
 {
+    use BelongsToTenant;
+
     protected $table = 'quote_items';
 
     /**
@@ -15,6 +18,7 @@ class QuoteItem extends Model implements QuoteItemContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'sku',
         'name',
         'quantity',

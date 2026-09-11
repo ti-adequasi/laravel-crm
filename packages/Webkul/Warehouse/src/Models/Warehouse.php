@@ -7,10 +7,12 @@ use Webkul\Activity\Models\ActivityProxy;
 use Webkul\Activity\Traits\LogsActivity;
 use Webkul\Attribute\Traits\CustomAttribute;
 use Webkul\Tag\Models\TagProxy;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\Warehouse\Contracts\Warehouse as WarehouseContract;
 
 class Warehouse extends Model implements WarehouseContract
 {
+    use BelongsToTenant;
     use CustomAttribute, LogsActivity;
 
     /**
@@ -19,6 +21,7 @@ class Warehouse extends Model implements WarehouseContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'description',
         'contact_name',

@@ -5,10 +5,13 @@ namespace Webkul\GoogleContact\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Webkul\GoogleContact\Contracts\GoogleContactAccount as GoogleContactAccountContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 
 class GoogleContactAccount extends Model implements GoogleContactAccountContract
 {
+    use BelongsToTenant;
+
     /**
      * Table name.
      *
@@ -22,6 +25,7 @@ class GoogleContactAccount extends Model implements GoogleContactAccountContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'user_id',
         'google_email',
         'access_token',

@@ -5,9 +5,12 @@ namespace Webkul\DataTransfer\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Webkul\DataTransfer\Contracts\ImportBatch as ImportBatchContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class ImportBatch extends Model implements ImportBatchContract
 {
+    use BelongsToTenant;
+
     /**
      * Indicates if the model should be timestamped.
      *
@@ -21,6 +24,7 @@ class ImportBatch extends Model implements ImportBatchContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'state',
         'data',
         'summary',

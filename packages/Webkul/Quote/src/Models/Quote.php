@@ -7,10 +7,12 @@ use Webkul\Attribute\Traits\CustomAttribute;
 use Webkul\Contact\Models\PersonProxy;
 use Webkul\Lead\Models\LeadProxy;
 use Webkul\Quote\Contracts\Quote as QuoteContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 
 class Quote extends Model implements QuoteContract
 {
+    use BelongsToTenant;
     use CustomAttribute;
 
     protected $table = 'quotes';
@@ -27,6 +29,7 @@ class Quote extends Model implements QuoteContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'subject',
         'description',
         'billing_address',

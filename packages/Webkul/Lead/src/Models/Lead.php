@@ -15,10 +15,12 @@ use Webkul\Email\Models\EmailProxy;
 use Webkul\Lead\Contracts\Lead as LeadContract;
 use Webkul\Quote\Models\QuoteProxy;
 use Webkul\Tag\Models\TagProxy;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 
 class Lead extends Model implements LeadContract
 {
+    use BelongsToTenant;
     use CustomAttribute, LogsActivity;
 
     /**
@@ -27,6 +29,7 @@ class Lead extends Model implements LeadContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'title',
         'description',
         'lead_value',

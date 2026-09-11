@@ -4,9 +4,12 @@ namespace Webkul\Lead\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Lead\Contracts\Pipeline as PipelineContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Pipeline extends Model implements PipelineContract
 {
+    use BelongsToTenant;
+
     protected $table = 'lead_pipelines';
 
     /**
@@ -15,6 +18,7 @@ class Pipeline extends Model implements PipelineContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'rotten_days',
         'is_default',

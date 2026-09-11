@@ -5,9 +5,11 @@ namespace Webkul\Attribute\Models;
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Activity\Traits\LogsActivity;
 use Webkul\Attribute\Contracts\AttributeValue as AttributeValueContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class AttributeValue extends Model implements AttributeValueContract
 {
+    use BelongsToTenant;
     use LogsActivity;
 
     /**
@@ -32,6 +34,7 @@ class AttributeValue extends Model implements AttributeValueContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'attribute_id',
         'text_value',
         'boolean_value',

@@ -5,9 +5,12 @@ namespace Webkul\Lead\Models;
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Lead\Contracts\Product as ProductContract;
 use Webkul\Product\Models\ProductProxy;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Product extends Model implements ProductContract
 {
+    use BelongsToTenant;
+
     protected $table = 'lead_products';
 
     /**
@@ -16,6 +19,7 @@ class Product extends Model implements ProductContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'quantity',
         'price',
         'amount',

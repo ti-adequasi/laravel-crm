@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Webkul\Lead\Models\LeadProxy;
 use Webkul\LeadGreen\Casts\SafeJsonCast;
 use Webkul\LeadGreen\Contracts\LeadGreen as LeadGreenContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 
 class LeadGreen extends Model implements LeadGreenContract
 {
+    use BelongsToTenant;
+
     /**
      * The table associated with the model.
      *
@@ -23,6 +26,7 @@ class LeadGreen extends Model implements LeadGreenContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         // Business identity, from the Google Maps search result.
         'business_id',
         'name',

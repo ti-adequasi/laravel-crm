@@ -36,7 +36,25 @@ class AdminServiceProvider extends ServiceProvider
 
         include __DIR__.'/../Http/helpers.php';
 
-        Route::middleware(['web', 'admin_locale', 'user'])
+        // 'tenant' (Webkul\Tenant\Http\Middleware\ResolveTenant, aliased from
+        // that package's own provider) binds the logged-in user's tenant_id
+        // for the rest of the request — every tenant-scoped model's global
+        // scope reads it from there. See crm-package-development/SKILL.md's
+        // multi-tenancy notes for why this is a direct edit rather than a
+        // hook: there's no way to inject a 4th entry into this array from
+        // another package's provider without one.
+        //
+        // 'tenant' must run BEFORE 'user' (confusingly, the alias for
+        // Webkul\Admin\Http\Middleware\Bouncer — the auth+ACL check, not
+        // Laravel's own auth middleware). Bouncer loads $user->role, and
+        // Role is itself tenant-scoped; if it ran first, that lookup would
+        // use whatever tenant happened to be bound from a PRIOR request in
+        // the same process (a queue worker, an artisan command chaining
+        // calls, or a test) instead of the one this request actually
+        // belongs to — discovered via a real 401 in
+        // tests/Feature/TenantScopingTest.php that a fresh per-request boot
+        // never hits, but a long-lived process genuinely can.
+        Route::middleware(['web', 'admin_locale', 'tenant', 'user'])
             ->prefix(config('app.admin_path'))
             ->group(__DIR__.'/../Routes/Admin/web.php');
 

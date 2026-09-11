@@ -5,9 +5,12 @@ namespace Webkul\Email\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
 use Webkul\Email\Contracts\Attachment as AttachmentContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Attachment extends Model implements AttachmentContract
 {
+    use BelongsToTenant;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -28,6 +31,7 @@ class Attachment extends Model implements AttachmentContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'path',
         'size',

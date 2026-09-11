@@ -4,11 +4,14 @@ namespace Webkul\UserMail\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 use Webkul\UserMail\Contracts\UserMailAccount as UserMailAccountContract;
 
 class UserMailAccount extends Model implements UserMailAccountContract
 {
+    use BelongsToTenant;
+
     /**
      * Table name.
      *
@@ -22,6 +25,7 @@ class UserMailAccount extends Model implements UserMailAccountContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'user_id',
         'host',
         'port',

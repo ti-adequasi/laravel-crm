@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Webkul\GoogleContact\Contracts\ContactExportBatch as ContactExportBatchContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 
 class ContactExportBatch extends Model implements ContactExportBatchContract
 {
+    use BelongsToTenant;
+
     public const STATE_PENDING = 'pending';
 
     public const STATE_FETCHING_EXISTING = 'fetching_existing';
@@ -35,6 +38,7 @@ class ContactExportBatch extends Model implements ContactExportBatchContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'user_id',
         'state',
         'total_count',

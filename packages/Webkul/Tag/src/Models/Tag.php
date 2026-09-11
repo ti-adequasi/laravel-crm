@@ -4,10 +4,13 @@ namespace Webkul\Tag\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Tag\Contracts\Tag as TagContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 
 class Tag extends Model implements TagContract
 {
+    use BelongsToTenant;
+
     protected $table = 'tags';
 
     /**
@@ -16,6 +19,7 @@ class Tag extends Model implements TagContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'color',
         'user_id',

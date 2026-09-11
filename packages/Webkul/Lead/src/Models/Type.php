@@ -4,9 +4,12 @@ namespace Webkul\Lead\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Lead\Contracts\Type as TypeContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Type extends Model implements TypeContract
 {
+    use BelongsToTenant;
+
     protected $table = 'lead_types';
 
     /**
@@ -15,6 +18,7 @@ class Type extends Model implements TypeContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
     ];
 

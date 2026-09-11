@@ -6,17 +6,21 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Webkul\Product\Contracts\ProductInventory as ProductInventoryContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\Warehouse\Models\LocationProxy;
 use Webkul\Warehouse\Models\WarehouseProxy;
 
 class ProductInventory extends Model implements ProductInventoryContract
 {
+    use BelongsToTenant;
+
     /**
      * The attributes that are mass assignable.
      *
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'in_stock',
         'allocated',
         'product_id',

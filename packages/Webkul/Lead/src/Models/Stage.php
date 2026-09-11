@@ -4,9 +4,12 @@ namespace Webkul\Lead\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Lead\Contracts\Stage as StageContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Stage extends Model implements StageContract
 {
+    use BelongsToTenant;
+
     public $timestamps = false;
 
     protected $table = 'lead_pipeline_stages';
@@ -17,6 +20,7 @@ class Stage extends Model implements StageContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'code',
         'name',
         'probability',

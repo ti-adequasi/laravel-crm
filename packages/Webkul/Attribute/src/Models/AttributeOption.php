@@ -4,9 +4,12 @@ namespace Webkul\Attribute\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Attribute\Contracts\AttributeOption as AttributeOptionContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class AttributeOption extends Model implements AttributeOptionContract
 {
+    use BelongsToTenant;
+
     public $timestamps = false;
 
     /**
@@ -15,6 +18,7 @@ class AttributeOption extends Model implements AttributeOptionContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'sort_order',
         'attribute_id',

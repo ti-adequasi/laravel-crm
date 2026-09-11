@@ -5,9 +5,12 @@ namespace Webkul\Activity\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Activity\Contracts\File as FileContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class File extends Model implements FileContract
 {
+    use BelongsToTenant;
+
     /**
      * The table associated with the model.
      *
@@ -28,6 +31,7 @@ class File extends Model implements FileContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'path',
         'activity_id',

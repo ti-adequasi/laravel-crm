@@ -6,10 +6,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Contracts\User as UserContract;
 
 class User extends Authenticatable implements UserContract
 {
+    use BelongsToTenant;
     use HasApiTokens, Notifiable;
 
     /**
@@ -18,6 +20,7 @@ class User extends Authenticatable implements UserContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'email',
         'image',

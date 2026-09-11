@@ -14,10 +14,12 @@ use Webkul\Contact\Contracts\Person as PersonContract;
 use Webkul\Contact\Database\Factories\PersonFactory;
 use Webkul\Lead\Models\LeadProxy;
 use Webkul\Tag\Models\TagProxy;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 
 class Person extends Model implements PersonContract
 {
+    use BelongsToTenant;
     use CustomAttribute, HasFactory, LogsActivity;
 
     /**
@@ -50,6 +52,7 @@ class Person extends Model implements PersonContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'emails',
         'contact_numbers',

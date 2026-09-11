@@ -7,9 +7,12 @@ use Webkul\Contact\Models\PersonProxy;
 use Webkul\Email\Contracts\Email as EmailContract;
 use Webkul\Lead\Models\LeadProxy;
 use Webkul\Tag\Models\TagProxy;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Email extends Model implements EmailContract
 {
+    use BelongsToTenant;
+
     /**
      * The table associated with the model.
      *
@@ -47,6 +50,7 @@ class Email extends Model implements EmailContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'subject',
         'source',
         'name',

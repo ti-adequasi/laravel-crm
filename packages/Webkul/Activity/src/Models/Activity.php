@@ -7,11 +7,14 @@ use Webkul\Activity\Contracts\Activity as ActivityContract;
 use Webkul\Contact\Models\PersonProxy;
 use Webkul\Lead\Models\LeadProxy;
 use Webkul\Product\Models\ProductProxy;
+use Webkul\Tenant\Traits\BelongsToTenant;
 use Webkul\User\Models\UserProxy;
 use Webkul\Warehouse\Models\WarehouseProxy;
 
 class Activity extends Model implements ActivityContract
 {
+    use BelongsToTenant;
+
     /**
      * Define table name of property
      *
@@ -42,6 +45,7 @@ class Activity extends Model implements ActivityContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'title',
         'type',
         'location',

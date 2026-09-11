@@ -5,9 +5,12 @@ namespace Webkul\Marketing\Models;
 use Illuminate\Database\Eloquent\Model;
 use Webkul\EmailTemplate\Models\EmailTemplateProxy;
 use Webkul\Marketing\Contracts\Campaign as CampaignContract;
+use Webkul\Tenant\Traits\BelongsToTenant;
 
 class Campaign extends Model implements CampaignContract
 {
+    use BelongsToTenant;
+
     /**
      * Define the table for the model.
      *
@@ -21,6 +24,7 @@ class Campaign extends Model implements CampaignContract
      * @var array
      */
     protected $fillable = [
+        'tenant_id',
         'name',
         'subject',
         'status',

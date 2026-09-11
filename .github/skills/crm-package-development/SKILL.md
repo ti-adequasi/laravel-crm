@@ -163,6 +163,43 @@ four wires above are the only thing actually running.
 
 ---
 
+## The `'user'` Middleware Alias Is Not Laravel's Auth Middleware
+
+`AdminServiceProvider::boot()` registers every admin route through
+`Route::middleware(['web', 'admin_locale', 'user', ...])`, and it is natural
+to read `'user'` as "resolve/require the authenticated user" and stop
+looking. It is not that — `$router->aliasMiddleware('user',
+Webkul\Admin\Http\Middleware\Bouncer::class)` (same file) means `'user'` **is**
+the full auth-and-ACL gate: are you logged in, is your account still active,
+and (via `isPermissionsEmpty()` → `checkIfAuthorized()`) do you hold the
+permission the current route maps to in `acl()->getRoles()`. There is no
+separate, earlier "just resolve the user" middleware in this stack — the
+first thing to touch `auth()->guard('user')->user()` in a request is
+whichever middleware in the array runs first and happens to call it.
+
+This matters the moment any middleware after `'user'` binds request-scoped
+state that an earlier check depends on. Multi-tenancy's `'tenant'` alias
+(`Webkul\Tenant\Http\Middleware\ResolveTenant`, added by
+`Webkul\Tenant\Providers\TenantServiceProvider`) binds `CurrentTenant` from
+the logged-in user — and `Bouncer::isPermissionsEmpty()` loads
+`auth()->guard('user')->user()->role`, which is itself tenant-scoped
+(`BelongsToTenant`'s global scope). Registering `'tenant'` *after* `'user'`
+(`['web', 'admin_locale', 'user', 'tenant']`) means the ACL check's own role
+lookup runs before this request's tenant is bound — on a fresh per-request
+boot `CurrentTenant` is simply unbound yet (harmless: the scope no-ops), but
+in any long-lived process that reuses the container across more than one
+"request" in the same boot (a `queue:work` worker, an artisan command
+looping over users, a Pest test that binds a tenant manually before making
+an HTTP call) it reads whatever tenant a *previous* iteration last bound —
+found via a real 401 in `tests/Feature/TenantScopingTest.php` that only
+reproduced through an actual HTTP round-trip, never through direct method
+calls in tinker. The fix is ordering, not new code: `['web', 'admin_locale',
+'tenant', 'user']` — any middleware that binds state a later check reads
+must run first, full stop; nothing downstream should have to guess whether
+it fired yet.
+
+---
+
 ## Scaffolding With `krayin-package-generator`
 
 `krayin/krayin-package-generator` is a dev dependency of this repo
