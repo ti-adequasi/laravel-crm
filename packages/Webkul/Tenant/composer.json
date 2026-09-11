@@ -1,0 +1,22 @@
+{
+    "name": "krayin/laravel-tenant",
+    "license": "MIT",
+    "description": "Multi-tenancy for Krayin CRM — a shared database with a tenant_id column per tenant-owned table, plus a super-admin screen to create and manage tenants.",
+    "require": {
+        "krayin/laravel-core": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Webkul\\Tenant\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\Tenant\\Providers\\TenantServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "minimum-stability": "dev"
+}

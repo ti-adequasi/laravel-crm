@@ -260,6 +260,34 @@ runtime error rather than a silent failure, but it means the docs' own
 example code doesn't run — verify column `type` against the enum, not the
 devdocs page.
 
+### Breadcrumbs live outside every package
+
+`<x-admin::breadcrumbs name="your.trail.key" />` (used on every index/create/edit
+view) doesn't read any package config — it calls the `diglactic/laravel-breadcrumbs`
+facade, whose trails are all registered in one app-level file:
+`routes/breadcrumbs.php`, not inside `packages/Webkul/Admin` or your own
+package. A new top-level screen needs its own `Breadcrumbs::for(...)` entries
+added there — real pattern, verified working:
+
+```php
+use Diglactic\Breadcrumbs\Breadcrumbs;
+use Diglactic\Breadcrumbs\Generator as BreadcrumbTrail;
+
+Breadcrumbs::for('your_module', function (BreadcrumbTrail $trail) {
+    // omit ->parent(...) for a top-level item, matching 'dashboard'/'leads';
+    // call $trail->parent('settings') instead if it belongs under Settings.
+    $trail->push(menu()->getLabel('your_module', 'your_module::app.menu.title'), route('admin.your_module.index'));
+});
+
+Breadcrumbs::for('your_module.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('your_module');
+    $trail->push(trans('your_module::app.create.title'), route('admin.your_module.create'));
+});
+```
+
+This is an app-level file, like `routes/console.php` — editing it isn't a
+"core package" edit and needs no special justification.
+
 ---
 
 ## Extending an Existing Module Without Touching Core

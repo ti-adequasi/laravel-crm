@@ -462,3 +462,21 @@ Breadcrumbs::for('dashboard.account.edit', function (BreadcrumbTrail $trail, $us
     $trail->parent('dashboard');
     $trail->push(trans('admin::app.account.edit.title'), route('admin.user.account.edit', $user->id));
 });
+
+// Tenants (top-level, super-admin only)
+Breadcrumbs::for('tenant', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push(menu()->getLabel('tenant', 'tenant::app.menu.title'), route('admin.tenant.index'));
+});
+
+// Tenants > Create
+Breadcrumbs::for('tenant.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('tenant');
+    $trail->push(trans('tenant::app.create.title'), route('admin.tenant.create'));
+});
+
+// Tenants > Edit
+Breadcrumbs::for('tenant.edit', function (BreadcrumbTrail $trail, $tenant) {
+    $trail->parent('tenant');
+    $trail->push(trans('tenant::app.edit.title'), route('admin.tenant.edit', $tenant->id));
+});

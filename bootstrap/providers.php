@@ -24,6 +24,7 @@ use Webkul\Product\Providers\ProductServiceProvider;
 use Webkul\Quote\Providers\QuoteServiceProvider;
 use Webkul\Sandbox\Providers\SandboxServiceProvider;
 use Webkul\Tag\Providers\TagServiceProvider;
+use Webkul\Tenant\Providers\TenantServiceProvider;
 use Webkul\User\Providers\UserServiceProvider;
 use Webkul\UserMail\Providers\UserMailServiceProvider;
 use Webkul\Warehouse\Providers\WarehouseServiceProvider;
@@ -65,6 +66,7 @@ return [
     QuoteServiceProvider::class,
     SandboxServiceProvider::class,
     TagServiceProvider::class,
+    TenantServiceProvider::class,
     UserServiceProvider::class,
     UserMailServiceProvider::class,
     WarehouseServiceProvider::class,
