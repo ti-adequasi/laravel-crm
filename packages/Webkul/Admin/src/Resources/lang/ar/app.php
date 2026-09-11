@@ -1757,6 +1757,7 @@ return [
             ],
         ],
         'create-success' => 'تم إرسال البريد الإلكتروني بنجاح.',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'update-success' => 'تم تحديث البريد الإلكتروني بنجاح.',
         'mass-update-success' => 'تم تحديث البريد الإلكتروني بنجاح.',
         'delete-success' => 'تم حذف البريد الإلكتروني بنجاح.',
@@ -1866,6 +1867,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => 'العميل الفاسد منذ :days أيام',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => 'قائمة العملاء الخاصة بك فارغة',
                 'empty-list-description' => 'قم بإنشاء عميل لتنظيم أهدافك.',
                 'create-lead-btn' => 'إنشاء عميل',

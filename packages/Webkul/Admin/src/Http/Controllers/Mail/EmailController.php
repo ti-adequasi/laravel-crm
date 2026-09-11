@@ -21,6 +21,7 @@ use Webkul\Email\Mails\Email;
 use Webkul\Email\Repositories\AttachmentRepository;
 use Webkul\Email\Repositories\EmailRepository;
 use Webkul\Lead\Repositories\LeadRepository;
+use Webkul\UserMail\Services\UserMailResolver;
 
 class EmailController extends Controller
 {
@@ -32,7 +33,8 @@ class EmailController extends Controller
     public function __construct(
         protected LeadRepository $leadRepository,
         protected EmailRepository $emailRepository,
-        protected AttachmentRepository $attachmentRepository
+        protected AttachmentRepository $attachmentRepository,
+        protected UserMailResolver $userMailResolver
     ) {}
 
     /**
@@ -124,20 +126,43 @@ class EmailController extends Controller
 
         Event::dispatch('email.create.before');
 
-        $email = $this->emailRepository->create(request()->all());
+        $mailAccount = $this->userMailResolver->resolveFor(auth()->guard('user')->user());
+
+        $data = request()->all();
+
+        if ($mailAccount['from']) {
+            $data['from'] = $mailAccount['from'];
+        }
+
+        $email = $this->emailRepository->create($data);
+
+        $sendFailed = false;
 
         if (! request('is_draft')) {
             try {
-                Mail::send(new Email($email));
+                Mail::mailer($mailAccount['mailer'] ?? config('mail.default'))->send(new Email($email));
 
                 $this->emailRepository->update([
                     'folders' => [SupportedFolderEnum::SENT->value],
                 ], $email->id);
             } catch (Exception $e) {
+                $sendFailed = true;
             }
         }
 
         Event::dispatch('email.create.after', $email);
+
+        if ($sendFailed) {
+            session()->flash('error', trans('admin::app.mail.send-failed'));
+
+            if (request()->ajax()) {
+                return response()->json([
+                    'message' => trans('admin::app.mail.send-failed'),
+                ], 422);
+            }
+
+            return redirect()->back();
+        }
 
         if (request()->ajax()) {
             return response()->json([
@@ -167,7 +192,13 @@ class EmailController extends Controller
     {
         Event::dispatch('email.update.before', $id);
 
+        $mailAccount = $this->userMailResolver->resolveFor(auth()->guard('user')->user());
+
         $data = request()->all();
+
+        if ($mailAccount['from']) {
+            $data['from'] = $mailAccount['from'];
+        }
 
         if (! is_null(request('is_draft'))) {
             $data['folders'] = request('is_draft') ? [SupportedFolderEnum::DRAFT->value] : [SupportedFolderEnum::OUTBOX->value];
@@ -177,15 +208,30 @@ class EmailController extends Controller
 
         Event::dispatch('email.update.after', $email);
 
+        $sendFailed = false;
+
         if (! is_null(request('is_draft')) && ! request('is_draft')) {
             try {
-                Mail::send(new Email($email));
+                Mail::mailer($mailAccount['mailer'] ?? config('mail.default'))->send(new Email($email));
 
                 $this->emailRepository->update([
                     'folders' => [SupportedFolderEnum::INBOX->value, SupportedFolderEnum::SENT->value],
                 ], $email->id);
             } catch (Exception $e) {
+                $sendFailed = true;
             }
+        }
+
+        if ($sendFailed) {
+            session()->flash('error', trans('admin::app.mail.send-failed'));
+
+            if (request()->ajax()) {
+                return response()->json([
+                    'message' => trans('admin::app.mail.send-failed'),
+                ], 422);
+            }
+
+            return redirect()->back();
         }
 
         if (! is_null(request('is_draft'))) {

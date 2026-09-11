@@ -316,6 +316,30 @@ all. It's still self-contained: own `Controller`, `Route`, `Resources/views`,
 own provider — just with an empty data layer. `LeadEnrichment` is a real
 example: one route, one injected button, zero tables.
 
+An injected partial isn't limited to static HTML — it can be a full
+interactive Vue component, following the same `<script type="text/x-template">`
++ `app.component('your-component', {...})` pattern the rest of this codebase
+already uses (see `packages/Webkul/Admin/src/Resources/views/configuration/field-type.blade.php`
+for the canonical example, or `packages/Webkul/UserMail/src/Resources/views/partials/account.blade.php`
+for one injected into another package's page this way). Two gotchas specific
+to that shape:
+
+- **A boolean prop passed as a plain (non-colon-bound) attribute is always
+  truthy.** `has-account="{{ $account ? 1 : 0 }}"` sends the *string* `"0"`
+  on the false case — and `"0"` is truthy in JavaScript, so `v-if="hasAccount"`
+  renders regardless. Bind it so Vue evaluates the attribute as a real
+  expression instead: `:has-account="{{ $account ? 'true' : 'false' }}"`.
+- **An endpoint driven by `$axios`/`fetch` must return JSON, never
+  `redirect()->back()`.** A redirect response to an XHR call doesn't bounce
+  the browser to a new page the way a normal form submit would — the browser
+  follows it silently *inside* the same XHR, preserving the original verb for
+  anything other than POST. A `PUT` handler that redirects to a GET-only
+  route therefore surfaces as a confusing 405 with no visible navigation, not
+  the redirect you wrote. `AccountController::update()`'s own
+  `redirect()->back()` is correct there because that endpoint is a plain
+  form post — copy `response()->json([...])` from a genuinely AJAX-driven
+  controller (e.g. this same `UserMailAccountController`) instead.
+
 **4. `vendor:publish` view override — replaces a whole core view, not just a
 point inside it.** Ship a same-path replacement under your package's
 `Resources/views/` and publish it to Laravel's vendor-override location from

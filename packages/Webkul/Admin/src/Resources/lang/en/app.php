@@ -1760,6 +1760,7 @@ return [
         ],
         'create-success' => 'Email sent successfully.',
         'update-success' => 'Email updated successfully.',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'mass-update-success' => 'Emails updated successfully.',
         'delete-success' => 'Email deleted successfully.',
         'delete-failed' => 'Email can not be deleted.',
@@ -1868,6 +1869,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => 'Lead is rotten for :days days',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => 'Your Leads List is Empty',
                 'empty-list-description' => 'Create a lead to organize your goals.',
                 'create-lead-btn' => 'Create Lead',

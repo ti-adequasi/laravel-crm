@@ -1755,6 +1755,7 @@ return [
             ],
         ],
         'create-success' => 'メールを送信しました。',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'update-success' => 'メールを更新しました。',
         'mass-update-success' => 'メールを更新しました。',
         'delete-success' => 'メールを削除しました。',
@@ -1864,6 +1865,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => 'このリードは :days 日間停滞しています',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => 'リード一覧は空です',
                 'empty-list-description' => 'リードを作成して目標を整理しましょう。',
                 'create-lead-btn' => 'リードを作成',

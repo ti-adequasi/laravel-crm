@@ -1757,6 +1757,7 @@ return [
             ],
         ],
         'create-success' => 'Email đã được gửi thành công.',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'update-success' => 'Email đã được cập nhật thành công.',
         'mass-update-success' => 'Các email đã được cập nhật thành công.',
         'delete-success' => 'Email đã được xóa thành công.',
@@ -1866,6 +1867,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => 'Khách hàng tiềm năng đã hết hạn trong :days ngày',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => 'Danh sách khách hàng tiềm năng của bạn trống',
                 'empty-list-description' => 'Tạo một khách hàng tiềm năng để tổ chức các mục tiêu của bạn.',
                 'create-lead-btn' => 'Tạo Khách Hàng Tiềm Năng',

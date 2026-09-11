@@ -141,7 +141,9 @@ class LeadRepository extends Repository
         $lead = parent::create(array_merge([
             'lead_pipeline_id' => 1,
             'lead_pipeline_stage_id' => 1,
-        ], $data));
+        ], $data, [
+            'stage_entered_at' => Carbon::now(),
+        ]));
 
         $this->attributeValueRepository->save(array_merge($data, [
             'entity_id' => $lead->id,
@@ -198,6 +200,18 @@ class LeadRepository extends Repository
                 $data['closed_at'] = $data['closed_at'] ?? Carbon::now();
             } else {
                 $data['closed_at'] = null;
+            }
+
+            /**
+             * Only stamp `stage_entered_at` when the stage is actually
+             * changing — a save that happens to resend the same stage id
+             * (e.g. saving the lead's other fields from its detail view)
+             * must not reset how long the card has been sitting there.
+             */
+            $currentStageId = $this->find($id)?->lead_pipeline_stage_id;
+
+            if ((int) $currentStageId !== (int) $data['lead_pipeline_stage_id']) {
+                $data['stage_entered_at'] = Carbon::now();
             }
         }
 

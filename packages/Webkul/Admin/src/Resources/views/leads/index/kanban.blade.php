@@ -174,6 +174,17 @@
 
                                     <div class="flex flex-wrap gap-1">
                                         <div
+                                            class="flex items-center gap-1 rounded-xl px-2 py-1 text-xs font-medium"
+                                            :class="element.days_in_stage >= 14
+                                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/20 dark:text-rose-400'
+                                                : 'bg-gray-200 dark:bg-gray-800 dark:text-white'"
+                                        >
+                                            <span class="icon-calendar text-sm"></span>
+
+                                            @{{ "@lang('admin::app.leads.index.kanban.days-in-stage', ['days' => 'replaceDays'])".replace('replaceDays', element.days_in_stage) }}
+                                        </div>
+
+                                        <div
                                             class="flex items-center gap-1 rounded-xl bg-gray-200 px-2 py-1 text-xs font-medium dark:bg-gray-800 dark:text-white"
                                             v-if="element.user"
                                         >

@@ -1757,6 +1757,7 @@ return [
             ],
         ],
         'create-success' => '이메일이 성공적으로 발송되었습니다.',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'update-success' => '이메일이 성공적으로 수정되었습니다.',
         'mass-update-success' => '이메일이 성공적으로 수정되었습니다.',
         'delete-success' => '이메일이 성공적으로 삭제되었습니다.',
@@ -1866,6 +1867,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => '리드가 :days일 동안 방치되었습니다',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => '리드 목록이 비어 있습니다',
                 'empty-list-description' => '목표를 관리하려면 리드를 생성하세요.',
                 'create-lead-btn' => '리드 생성',

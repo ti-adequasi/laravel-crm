@@ -1,0 +1,23 @@
+{
+    "name": "krayin/laravel-user-mail",
+    "license": "MIT",
+    "description": "Lets each admin user connect their own outbound SMTP account, so emails they send from the CRM go out as them instead of always using the system-wide mailer.",
+    "require": {
+        "krayin/laravel-core": "^1.0",
+        "krayin/laravel-user": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Webkul\\UserMail\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\UserMail\\Providers\\UserMailServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "minimum-stability": "dev"
+}

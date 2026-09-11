@@ -1757,6 +1757,7 @@ return [
             ],
         ],
         'create-success' => 'ایمیل با موفقیت ارسال شد.',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'update-success' => 'ایمیل با موفقیت به‌روزرسانی شد.',
         'mass-update-success' => 'ایمیل‌ها با موفقیت به‌روزرسانی شدند.',
         'delete-success' => 'ایمیل با موفقیت حذف شد.',
@@ -1866,6 +1867,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => 'سرنخ برای :days روز خراب شده است',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => 'لیست سرنخ‌های شما خالی است',
                 'empty-list-description' => 'یک سرنخ ایجاد کنید تا اهداف خود را سازماندهی کنید.',
                 'create-lead-btn' => 'ایجاد سرنخ',

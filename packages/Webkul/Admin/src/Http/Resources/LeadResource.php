@@ -23,6 +23,7 @@ class LeadResource extends JsonResource
             'status' => $this->status,
             'expected_close_date' => $this->expected_close_date,
             'rotten_days' => $this->rotten_days,
+            'days_in_stage' => $this->days_in_stage,
             'closed_at' => $this->closed_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

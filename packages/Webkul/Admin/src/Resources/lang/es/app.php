@@ -1757,6 +1757,7 @@ return [
             ],
         ],
         'create-success' => 'Correo enviado con éxito.',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'update-success' => 'Correo actualizado con éxito.',
         'mass-update-success' => 'Correos actualizados con éxito.',
         'delete-success' => 'Correo eliminado con éxito.',
@@ -1866,6 +1867,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => 'El lead está podrido desde hace :days días',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => 'Tu lista de leads está vacía',
                 'empty-list-description' => 'Crea un lead para organizar tus objetivos.',
                 'create-lead-btn' => 'Crear Lead',

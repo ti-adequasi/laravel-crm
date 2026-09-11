@@ -1757,6 +1757,7 @@ return [
             ],
         ],
         'create-success' => 'E-posta başarıyla gönderildi.',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'update-success' => 'E-posta başarıyla güncellendi.',
         'mass-update-success' => 'E-postalar başarıyla güncellendi.',
         'delete-success' => 'E-posta başarıyla silindi.',
@@ -1866,6 +1867,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => 'Bu müşteri adayı :days gündür çürük',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => 'Müşteri Adayı Listeniz Boş',
                 'empty-list-description' => 'Hedeflerinizi düzenlemek için bir müşteri adayı oluşturun.',
                 'create-lead-btn' => 'Müşteri Adayı Oluştur',

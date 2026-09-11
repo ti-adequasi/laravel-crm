@@ -40,6 +40,7 @@ class Lead extends Model implements LeadContract
         'lead_type_id',
         'lead_pipeline_id',
         'lead_pipeline_stage_id',
+        'stage_entered_at',
     ];
 
     /**
@@ -50,6 +51,7 @@ class Lead extends Model implements LeadContract
     protected $casts = [
         'closed_at' => 'datetime:D M d, Y H:i A',
         'expected_close_date' => 'date:D M d, Y',
+        'stage_entered_at' => 'datetime',
     ];
 
     /**
@@ -59,6 +61,7 @@ class Lead extends Model implements LeadContract
      */
     protected $appends = [
         'rotten_days',
+        'days_in_stage',
     ];
 
     /**
@@ -169,5 +172,20 @@ class Lead extends Model implements LeadContract
         $rottenDate = $this->created_at->addDays($this->pipeline->rotten_days);
 
         return $rottenDate->diffInDays(Carbon::now(), false);
+    }
+
+    /**
+     * Returns how many whole days the lead has been sitting in its current
+     * stage. Carbon 3's diffInDays() returns a float (e.g. 5.00001), so
+     * this floors it — otherwise the Kanban card would show a fractional
+     * day count.
+     */
+    public function getDaysInStageAttribute()
+    {
+        if (! $this->stage_entered_at) {
+            return 0;
+        }
+
+        return (int) floor($this->stage_entered_at->diffInDays(Carbon::now()));
     }
 }

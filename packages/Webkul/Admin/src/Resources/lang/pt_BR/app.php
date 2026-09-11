@@ -1758,6 +1758,7 @@ return [
         ],
         'create-success' => 'E-mail enviado com sucesso.',
         'update-success' => 'E-mail atualizado com sucesso.',
+        'send-failed' => 'Não foi possível enviar o e-mail. Confira suas configurações de envio e tente novamente.',
         'mass-update-success' => 'E-mails atualizados com sucesso.',
         'delete-success' => 'E-mail excluído com sucesso.',
         'delete-failed' => 'E-mail não pode ser excluído.',
@@ -1866,6 +1867,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => 'Negócio estagnado por :days dias',
+                'days-in-stage' => ':days dias nesta etapa',
                 'empty-list' => 'Sua lista de Negócios está vazia',
                 'empty-list-description' => 'Adicione um negócio para organizar seus objetivos.',
                 'create-lead-btn' => 'Adicionar Negócio',

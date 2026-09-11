@@ -1757,6 +1757,7 @@ return [
             ],
         ],
         'create-success' => '邮件发送成功。',
+        'send-failed' => 'The email could not be sent. Check your outbound email settings and try again.',
         'update-success' => '邮件更新成功。',
         'mass-update-success' => '邮件更新成功。',
         'delete-success' => '邮件删除成功。',
@@ -1866,6 +1867,7 @@ return [
             ],
             'kanban' => [
                 'rotten-days' => '该线索已滞留 :days 天',
+                'days-in-stage' => ':days days in stage',
                 'empty-list' => '您的线索列表为空',
                 'empty-list-description' => '创建一条线索以梳理您的目标。',
                 'create-lead-btn' => '创建线索',
