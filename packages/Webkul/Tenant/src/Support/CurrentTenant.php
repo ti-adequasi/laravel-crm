@@ -2,8 +2,17 @@
 
 namespace Webkul\Tenant\Support;
 
+use Webkul\Tenant\Repositories\TenantRepository;
+
 class CurrentTenant
 {
+    /**
+     * Set only for the lifetime of a runAsNullTenant() callback — see
+     * shouldScopeToNullTenant() and TenantScope::apply() for why this
+     * needs to be a separate flag rather than reusing id() === null.
+     */
+    private static bool $scopingToNullTenant = false;
+
     /**
      * The currently-bound tenant id for this request/process, or null for
      * a super-admin / a console context where no tenant was ever resolved
@@ -39,5 +48,68 @@ class CurrentTenant
                 app()->forgetInstance('currentTenantId');
             }
         }
+    }
+
+    /**
+     * Whether TenantScope should filter to tenant_id IS NULL specifically,
+     * rather than apply no filter at all. Deliberately separate from
+     * id() === null: that state means "no tenant bound", under which a
+     * super-admin's ordinary request must see every tenant's rows
+     * unfiltered — this flag instead means "processing the null-tenant
+     * bucket on purpose", which needs the opposite. Only ever true inside
+     * runAsNullTenant()'s own callback.
+     */
+    public static function shouldScopeToNullTenant(): bool
+    {
+        return static::$scopingToNullTenant;
+    }
+
+    /**
+     * Run a callback scoped specifically to tenant_id IS NULL rows — the
+     * super-admin's own data, or anything predating multi-tenancy. Not
+     * the same as runAs(null, ...) alone: that leaves TenantScope
+     * unfiltered (correct for an interactive super-admin request, who
+     * must see every tenant's data), whereas this additionally flips
+     * shouldScopeToNullTenant() so the scope filters to WHERE tenant_id
+     * IS NULL instead of not filtering at all — the distinction
+     * eachActiveTenant()'s own final pass depends on.
+     */
+    public static function runAsNullTenant(callable $callback): mixed
+    {
+        $wasScoping = static::$scopingToNullTenant;
+
+        static::$scopingToNullTenant = true;
+
+        try {
+            return static::runAs(null, $callback);
+        } finally {
+            static::$scopingToNullTenant = $wasScoping;
+        }
+    }
+
+    /**
+     * Run a callback once per active tenant, plus once more scoped to
+     * tenant_id IS NULL (data predating multi-tenancy, or anything a
+     * super-admin owns directly — see runAsNullTenant()). The shape a
+     * scheduled command needs (Phase 2.5) so every tenant gets its own
+     * fair slice of a per-run budget instead of one unscoped pass where a
+     * single large tenant can starve smaller ones, and so a query that
+     * joins across tenant-owned tables (campaigns to their recipients,
+     * say) can't cross tenant boundaries by never having a tenant bound
+     * at all. $callback receives the tenant id being processed (null on
+     * the last pass) purely for logging — CurrentTenant::id() already
+     * reflects it for anything the callback itself queries.
+     */
+    public static function eachActiveTenant(callable $callback): void
+    {
+        $tenantIds = app(TenantRepository::class)
+            ->findWhere(['is_active' => true])
+            ->pluck('id');
+
+        foreach ($tenantIds as $tenantId) {
+            static::runAs($tenantId, fn () => $callback($tenantId));
+        }
+
+        static::runAsNullTenant(fn () => $callback(null));
     }
 }

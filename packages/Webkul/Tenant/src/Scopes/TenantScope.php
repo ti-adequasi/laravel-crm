@@ -14,6 +14,14 @@ class TenantScope implements Scope
      * bound at all (a super-admin request, or a console context that
      * hasn't opted into a specific tenant), in which case no filter is
      * applied and the query sees every tenant's rows.
+     *
+     * The one exception is CurrentTenant::runAsNullTenant() — deliberately
+     * a *different* state from plain "unbound", even though id() reads
+     * null either way: a scheduled command giving the null-tenant bucket
+     * (super-admin-owned / pre-multi-tenancy data) its own turn needs
+     * WHERE tenant_id IS NULL specifically, not "no filter at all", which
+     * would spill into every other tenant's rows too — exactly the leak
+     * CurrentTenant::eachActiveTenant()'s own final pass exists to avoid.
      */
     public function apply(Builder $builder, Model $model): void
     {
@@ -21,6 +29,12 @@ class TenantScope implements Scope
 
         if ($tenantId !== null) {
             $builder->where($model->getQualifiedTenantColumn(), $tenantId);
+
+            return;
+        }
+
+        if (CurrentTenant::shouldScopeToNullTenant()) {
+            $builder->whereNull($model->getQualifiedTenantColumn());
         }
     }
 }

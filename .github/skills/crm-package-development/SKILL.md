@@ -207,6 +207,27 @@ calls in tinker. The fix is ordering, not new code: `['web', 'admin_locale',
 must run first, full stop; nothing downstream should have to guess whether
 it fired yet.
 
+**`CurrentTenant::id() === null` means two different things, and
+conflating them is a real cross-tenant leak, not just an edge case.** It
+means "no tenant bound at all" (an ordinary super-admin request, or a
+console context that never opted in) — TenantScope deliberately leaves
+these completely unfiltered, since a super-admin must see every tenant's
+rows at once. But a scheduled command iterating tenants one at a time
+(Phase 2.5, `CurrentTenant::eachActiveTenant()`) also needs a pass over
+the null-tenant bucket itself (pre-multi-tenancy data, or anything a
+super-admin owns directly) — and naively doing that via `runAs(null,
+...)` hits the *same* unfiltered branch, so that pass silently sees every
+OTHER tenant's rows too, not just the null ones. Caught by a real
+cross-tenant email send in `tests/Feature/ScheduledCommandsTenantScopingTest.php`
+(`campaign:process`, unlike `leadgreen:enrich-pending`, has no per-run
+limit to mask the leak behind). Fixed with a second, explicit flag —
+`CurrentTenant::runAsNullTenant()` — that TenantScope checks only when
+`id()` is null, applying `WHERE tenant_id IS NULL` instead of no filter
+at all; ordinary unbound requests never set it and are unaffected. Any
+new scheduled command that needs "every tenant, including the unassigned
+bucket" should go through `eachActiveTenant()` rather than hand-rolling
+its own loop over tenant ids plus a bare `null` pass.
+
 ---
 
 ## Scaffolding With `krayin-package-generator`
