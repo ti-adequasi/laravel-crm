@@ -491,7 +491,49 @@ to that shape:
   the redirect you wrote. `AccountController::update()`'s own
   `redirect()->back()` is correct there because that endpoint is a plain
   form post — copy `response()->json([...])` from a genuinely AJAX-driven
-  controller (e.g. this same `UserMailAccountController`) instead.
+  controller (e.g. this same `UserMailAccountController`) instead. This
+  mistake recurred once already after being documented here — a symptom to
+  recognize it by: axios's `.catch()` fires with a *generic* fallback
+  message (no `error.response.data.message`), because the actual response
+  was HTML from the followed redirect, not the JSON error body the handler
+  expects — check the real request's response status/body (network tab, or
+  a Pest `->put(...)->getContent()`) before assuming the failure is
+  server-side logic rather than this.
+- **`x-admin::form.control-group.control type="switch"` only works inside a
+  real `<x-admin::form>`/`<VForm>`, not a hand-rolled `app.component()` with
+  a manually-tracked `data.form` object and a manual `$axios.put(...)`.**
+  That control wraps a vee-validate `<v-field type="checkbox">` plus an
+  internal `<v-checked-handler>` specifically so a `<VForm>`'s own native
+  submit can collect the checkbox's state by `name` — nothing in that path
+  ever writes back into a `v-model` you bind on the outer component tag.
+  Symptom: the checkbox visibly toggles fine, but the submitted payload is
+  silently missing that key entirely (confirmed by reading the actual
+  request body, not just watching the UI) — not a validation error, not an
+  exception, just absent. `UserMail`'s and `Tenant`'s own settings pages
+  never hit this because the former has no boolean field at all and the
+  latter submits through a real `<x-admin::form>` (see its `:checked=`
+  static-only usage, never `v-model`). A component in the `UserMail`/`Pbx`
+  shape (own `data.form`, own `$axios` call) needs a plain native
+  `<input type="checkbox" v-model="form.x">` for any boolean field instead
+  — style it by hand with the same `peer`/`after:` Tailwind classes the
+  shared control uses internally if it needs to look like the app's other
+  toggles.
+- **A component's own attributes can collide with what a shared control
+  hardcodes internally, and Vue's template compiler (unlike a browser
+  parsing plain HTML) rejects the result outright, blanking the whole
+  page.** `type="switch"`'s own template hardcodes `id="{{ $name }}"` and
+  `class="peer sr-only"` on its underlying `<input>`, then separately
+  forwards whatever `$attributes` it was given onto that same element —
+  passing your own `id=`/`class=` on top produces a literal duplicate
+  attribute, and `DUPLICATE_ATTRIBUTE` is a hard Vue compiler error, not a
+  silently-tolerated duplicate the way a raw `.html` file would be. To
+  actually pinpoint one instead of guessing: `page.$eval('#your-template-id',
+  el => el.innerHTML)` the rendered `<script type="text/x-template">` via
+  Playwright, then compile that string with `@vue/compiler-dom`'s
+  `compile()` (`npm install @vue/compiler-dom` in a scratch dir) — the
+  thrown error's `.loc` gives the exact line. A page.on('pageerror', ...)
+  listener pointing at `vuejs.org/error-reference/#compiler-N` is the
+  signal to reach for this rather than re-reading the Blade source by eye.
 - **Two independent `<x-admin::form>` instances on the same page must not
   share a field `name`.** HTML `name` is what actually reaches the server —
   giving a second, unrelated form's field the same `name` as one already on

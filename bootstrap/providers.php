@@ -20,6 +20,7 @@ use Webkul\Lead\Providers\LeadServiceProvider;
 use Webkul\LeadEnrichment\Providers\LeadEnrichmentServiceProvider;
 use Webkul\LeadGreen\Providers\LeadGreenServiceProvider;
 use Webkul\Marketing\Providers\MarketingServiceProvider;
+use Webkul\Pbx\Providers\PbxServiceProvider;
 use Webkul\Product\Providers\ProductServiceProvider;
 use Webkul\Quote\Providers\QuoteServiceProvider;
 use Webkul\Sandbox\Providers\SandboxServiceProvider;
@@ -62,6 +63,7 @@ return [
     LeadServiceProvider::class,
     LeadEnrichmentServiceProvider::class,
     LeadGreenServiceProvider::class,
+    PbxServiceProvider::class,
     ProductServiceProvider::class,
     QuoteServiceProvider::class,
     SandboxServiceProvider::class,

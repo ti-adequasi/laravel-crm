@@ -1,0 +1,23 @@
+{
+    "name": "krayin/laravel-pbx",
+    "license": "MIT",
+    "description": "PBX Inovalen integration for Krayin CRM — per-tenant API key, click-to-call dialer, per-agent extension.",
+    "require": {
+        "krayin/laravel-core": "^1.0",
+        "krayin/laravel-tenant": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Webkul\\Pbx\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\Pbx\\Providers\\PbxServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "minimum-stability": "dev"
+}
