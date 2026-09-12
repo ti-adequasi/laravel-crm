@@ -18,10 +18,17 @@ class OrganizationDataGrid extends DataGrid
 
     /**
      * Prepare query builder.
+     *
+     * The early `return` used to make everything below unreachable dead
+     * code — the data-scope filter (view_permission) and both addFilter()
+     * calls never ran for anyone, on any tenant, so any user with access
+     * to this grid saw every organization regardless of their own scope
+     * restriction. Found auditing this grid for Phase 2.6 (tenant
+     * isolation); fixed here too since it's the same query.
      */
     public function prepareQueryBuilder(): Builder
     {
-        return DB::table('organizations')
+        $queryBuilder = DB::table('organizations')
             ->addSelect(
                 'organizations.id',
                 'organizations.name',
@@ -36,6 +43,8 @@ class OrganizationDataGrid extends DataGrid
         $this->addFilter('id', 'organizations.id');
 
         $this->addFilter('organization', 'organizations.name');
+
+        return $queryBuilder;
     }
 
     /**

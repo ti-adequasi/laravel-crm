@@ -3,7 +3,17 @@
 use Illuminate\Support\Facades\Route;
 use Webkul\LeadGreen\Http\Controllers\LeadGreenController;
 
-Route::middleware(['web', 'admin_locale', 'user'])
+// This package registers its own routes independently of
+// Webkul\Admin\Providers\AdminServiceProvider's Routes/Admin/web.php
+// group — 'tenant' (ResolveTenant) is never applied unless listed here
+// too. Missing it left LeadGreen (a BelongsToTenant model since Phase
+// 2.2) with no tenant ever bound and therefore no scoping at all: any
+// tenant could list, view, convert, enrich, discard or export any other
+// tenant's prospects. 'tenant' before 'user' matches AdminServiceProvider's
+// own ordering (see crm-package-development/SKILL.md) — 'user' is really
+// Bouncer, and its own tenant-scoped role lookup must see this request's
+// tenant already bound, not one left over from earlier.
+Route::middleware(['web', 'admin_locale', 'tenant', 'user'])
     ->prefix(config('app.admin_path'))
     ->group(function () {
         Route::controller(LeadGreenController::class)->prefix('leadgreen')->group(function () {

@@ -12,6 +12,7 @@ use Webkul\Lead\Repositories\LeadRepository;
 use Webkul\Lead\Repositories\PipelineRepository;
 use Webkul\Lead\Repositories\SourceRepository;
 use Webkul\Lead\Repositories\TypeRepository;
+use Webkul\Tenant\Support\CurrentTenant;
 use Webkul\WebForm\Http\Requests\WebForm;
 use Webkul\WebForm\Repositories\WebFormRepository;
 
@@ -45,8 +46,33 @@ class WebFormController extends Controller
 
     /**
      * Remove the specified email template from storage.
+     *
+     * A public, unauthenticated endpoint (a third-party site embeds this
+     * with no login of its own) — there is no admin user to resolve a
+     * tenant from the ordinary way, so the WebForm row itself is the only
+     * place a tenant can be derived from at all. Everything past that
+     * point (the existing-person lookup, and creating the Lead/Person)
+     * runs inside CurrentTenant::runAs($webForm->tenant_id, ...): without
+     * it, a lookup-by-email could silently merge into an unrelated
+     * person belonging to a different tenant, and any created Lead/Person
+     * would be stamped tenant_id NULL — invisible to the form's own
+     * tenant afterward, not just visible to the wrong one.
      */
     public function formStore(int $id): JsonResponse
+    {
+        $webForm = $this->webFormRepository->findOrFail($id);
+
+        return CurrentTenant::runAs($webForm->tenant_id, function () use ($webForm) {
+            return $this->processFormSubmission($webForm);
+        });
+    }
+
+    /**
+     * The actual form-submission handling, run with the owning tenant
+     * already bound by formStore() — unchanged from before except for
+     * that scoping.
+     */
+    protected function processFormSubmission($webForm): JsonResponse
     {
         $person = $this->personRepository
             ->getModel()
@@ -58,8 +84,6 @@ class WebFormController extends Controller
         }
 
         app(WebForm::class);
-
-        $webForm = $this->webFormRepository->findOrFail($id);
 
         if ($webForm->create_lead) {
             request()->request->add(['entity_type' => 'leads']);
@@ -154,16 +178,22 @@ class WebFormController extends Controller
 
     /**
      * Preview the web form from datagrid.
+     *
+     * The null check has to come before request()->merge() reads
+     * $webForm->form_id — reachable even before this route carried tenant
+     * scoping (any nonexistent id), but scoping (see routes.php) makes it
+     * reachable for any OTHER tenant's real id too, since findOneByField
+     * now genuinely returns null for one instead of finding it anyway.
      */
     public function view(int $id): View
     {
         $webForm = $this->webFormRepository->findOneByField('id', $id);
 
-        request()->merge(['id' => $webForm->form_id]);
-
         if (is_null($webForm)) {
             abort(404);
         }
+
+        request()->merge(['id' => $webForm->form_id]);
 
         return view('web_form::settings.web-forms.preview', compact('webForm'));
     }

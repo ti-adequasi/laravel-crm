@@ -255,6 +255,37 @@ whether the model backing a new upload actually has the trait, and if it
 doesn't, add an explicit tenant check to whatever serves it back, the
 same way.
 
+**A package that registers its own routes gets NO tenant scoping at all
+unless it explicitly adds `'tenant'` itself — this is the single biggest
+gap Phase 2.6's audit found.** `'tenant'` (`ResolveTenant`) only ever
+runs because `AdminServiceProvider::boot()` puts it in the middleware
+array wrapping `Routes/Admin/web.php`. A package that instead calls
+`loadRoutesFrom()` from its own provider (`LeadGreen`, `LeadEnrichment`,
+`UserMail`, `WebForm` all did, historically copying `['web',
+'admin_locale', 'user']` from an old pre-tenant example rather than the
+real current array) sits at the same `/admin/...` URL space, reachable
+by ordinary navigation, but `CurrentTenant::id()` is null for the entire
+request — every `BelongsToTenant` model's global scope silently no-ops,
+identical to an unauthenticated super-admin request. Found because
+`LeadGreen` — every one of its ~9 endpoints (list, view, convert, enrich,
+discard, export) — was fully unscoped this way: any tenant could act on
+any other tenant's prospects by id, entirely undetected by every other
+test in this suite, because they all test a *model*/*DataGrid* being
+scoped correctly once a tenant is bound — none of them independently
+checks that the *route serving it* actually got a tenant bound in the
+first place. **Any new package with its own `loadRoutesFrom()` that
+touches a `BelongsToTenant` model must include `'tenant'` in its own
+middleware array**, ordered before `'user'` (see the `'user'` Middleware
+Alias section above) — copying `Route::middleware(['web',
+'admin_locale', 'tenant', 'user'])` from an existing package's
+`Routes/routes.php` (LeadGreen's own is the reference example) is safer
+than reasoning it out fresh each time. A genuinely public,
+unauthenticated route (WebForm's embed endpoints) can't use `'tenant'`
+at all — `ResolveTenant` reads the authenticated user, and there is none
+— so it has to derive the tenant a different way: from the resource
+itself (`CurrentTenant::runAs($resource->tenant_id, fn () => ...)`,
+`WebFormController::formStore()`'s own fix), not from whoever is asking.
+
 ---
 
 ## Scaffolding With `krayin-package-generator`

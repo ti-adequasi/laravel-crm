@@ -9,6 +9,7 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Admin\Http\Resources\ActivityResource;
 use Webkul\Email\Repositories\AttachmentRepository;
 use Webkul\Email\Repositories\EmailRepository;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class ActivityController extends Controller
 {
@@ -41,15 +42,26 @@ class ActivityController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     *
+     * See Lead\ActivityController::concatEmailAsActivities() for why this
+     * raw query needs its own explicit tenant filter — same shape, same
+     * gap, same fix.
      */
     public function concatEmailAsActivities($personId, $activities)
     {
-        $emails = DB::table('emails as child')
+        $childQuery = DB::table('emails as child')
             ->select('child.*')
             ->join('emails as parent', 'child.parent_id', '=', 'parent.id')
-            ->where('parent.person_id', $personId)
-            ->union(DB::table('emails as parent')->where('parent.person_id', $personId))
-            ->get();
+            ->where('parent.person_id', $personId);
+
+        $parentQuery = DB::table('emails as parent')->where('parent.person_id', $personId);
+
+        if (($tenantId = CurrentTenant::id()) !== null) {
+            $childQuery->where('parent.tenant_id', $tenantId);
+            $parentQuery->where('parent.tenant_id', $tenantId);
+        }
+
+        $emails = $childQuery->union($parentQuery)->get();
 
         return $activities->concat($emails->map(function ($email) {
             return (object) [

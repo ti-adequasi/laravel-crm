@@ -9,6 +9,7 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Admin\Http\Resources\ActivityResource;
 use Webkul\Email\Repositories\AttachmentRepository;
 use Webkul\Email\Repositories\EmailRepository;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class ActivityController extends Controller
 {
@@ -41,15 +42,30 @@ class ActivityController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     *
+     * A raw DB::table() query — not a DataGrid, so ScopeDataGridToTenant
+     * never applied here either, and it never had any tenant filter of
+     * its own: passing another tenant's lead id returned that tenant's
+     * own emails, mixed into this one's activity timeline. Filtered on
+     * parent.tenant_id (the lead-linked row) for both branches of the
+     * union — a reply's tenant always matches its own parent's, since a
+     * Lead's emails can't span tenants in the first place.
      */
     public function concatEmailAsActivities($leadId, $activities)
     {
-        $emails = DB::table('emails as child')
+        $childQuery = DB::table('emails as child')
             ->select('child.*')
             ->join('emails as parent', 'child.parent_id', '=', 'parent.id')
-            ->where('parent.lead_id', $leadId)
-            ->union(DB::table('emails as parent')->where('parent.lead_id', $leadId))
-            ->get();
+            ->where('parent.lead_id', $leadId);
+
+        $parentQuery = DB::table('emails as parent')->where('parent.lead_id', $leadId);
+
+        if (($tenantId = CurrentTenant::id()) !== null) {
+            $childQuery->where('parent.tenant_id', $tenantId);
+            $parentQuery->where('parent.tenant_id', $tenantId);
+        }
+
+        $emails = $childQuery->union($parentQuery)->get();
 
         return $activities->concat($emails->map(function ($email) {
             return (object) [
