@@ -1967,9 +1967,7 @@ return [
             'tabs' => [
                 'description' => 'Mô Tả',
                 'products' => 'Sản Phẩm',
-                'quotes' => 'Báo Giá',
-                'pbx-call-history' => 'Lịch Sử Cuộc Gọi',
-            ],
+                'quotes' => 'Báo Giá',            ],
             'attributes' => [
                 'title' => 'Về Khách Hàng Tiềm Năng',
             ],

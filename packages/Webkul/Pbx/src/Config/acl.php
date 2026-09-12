@@ -25,6 +25,7 @@ return [
             // not two — no strong signal from the plan that a user should
             // ever have one without the other.
             'admin.pbx.history.index', 'admin.pbx.history.recording-url',
+            'admin.pbx.history.intel', 'admin.pbx.history.analyze',
         ],
         'sort' => 5,
     ],

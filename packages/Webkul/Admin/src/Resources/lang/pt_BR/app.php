@@ -1967,9 +1967,7 @@ return [
             'tabs' => [
                 'description' => 'Descrição',
                 'products' => 'Produtos',
-                'quotes' => 'Cotações',
-                'pbx-call-history' => 'Histórico de Ligações',
-            ],
+                'quotes' => 'Cotações',            ],
             'attributes' => [
                 'title' => 'Sobre o Negócio',
             ],

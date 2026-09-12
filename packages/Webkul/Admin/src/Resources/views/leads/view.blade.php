@@ -109,34 +109,55 @@
             {!! view_render_event('admin.leads.view.activities.before', ['lead' => $lead]) !!}
 
             @php
-                // The Pbx package's own live call-history panel — only a
-                // tab worth showing (and only worth fetching PBX data for)
-                // when there's actually a Person with phone numbers to
-                // look up, and when the acting user is allowed to use PBX
-                // features at all (same 'leads.calls' permission the
-                // click-to-call button on this same page already gates
-                // on). extra-types has no hook of its own to append to
-                // from outside this file (it's a plain PHP literal, not
-                // filtered through any view_render_event) — this is the
-                // same kind of small, direct, justified core edit as the
-                // one-line addition in leads/view/person.blade.php, for
-                // the same underlying reason.
-                $pbxCallHistoryExtraType = ($lead?->person && bouncer()->hasPermission('leads.calls'))
-                    ? [['name' => 'pbx_call_history', 'label' => trans('admin::app.leads.view.tabs.pbx-call-history')]]
-                    : [];
+                // The native "Chamadas" tab (built into <x-admin::activities>'s
+                // own `types` default) is retargeted here to the Pbx
+                // package's own merged view — the CRM's own logged call
+                // Activities plus, when there's a Person and the acting
+                // user holds 'leads.calls', the PBX's live call history
+                // too (see call-history-panel.blade.php's own docblock for
+                // why this replaces rather than adds a tab, and why that
+                // needs a `:types` override here rather than a
+                // view_render_event: `extraTypes` is a plain PHP literal
+                // in this file, filtered through no hook at all).
+                // The exact same 8 entries components/activities/index.blade.php
+                // itself defaults `types` to, minus 'call' — 'call' moves to
+                // extraTypes below instead. Mirrored by hand rather than
+                // computed, since that default array only exists as a
+                // hardcoded JS literal in that file, nothing PHP-reachable.
+                $typesWithoutNativeCall = [
+                    ['name' => 'all', 'label' => trans('admin::app.components.activities.index.all')],
+                    ['name' => 'planned', 'label' => trans('admin::app.components.activities.index.planned')],
+                    ['name' => 'note', 'label' => trans('admin::app.components.activities.index.notes')],
+                    ['name' => 'meeting', 'label' => trans('admin::app.components.activities.index.meetings')],
+                    ['name' => 'lunch', 'label' => trans('admin::app.components.activities.index.lunches')],
+                    ['name' => 'file', 'label' => trans('admin::app.components.activities.index.files')],
+                    ['name' => 'email', 'label' => trans('admin::app.components.activities.index.emails')],
+                    ['name' => 'system', 'label' => trans('admin::app.components.activities.index.change-log')],
+                ];
+
+                $pbxHistoryAvailable = (bool) ($lead?->person && bouncer()->hasPermission('leads.calls'));
             @endphp
 
             <x-admin::activities
                 :endpoint="route('admin.leads.activities.index', $lead->id)"
                 :email-detach-endpoint="route('admin.leads.emails.detach', $lead->id)"
                 :activeType="request()->query('tab') ?? (request()->query('from') === 'quotes' ? 'quotes' : 'all')"
+                :types="$typesWithoutNativeCall"
                 :extra-types="[
+                    ['name' => 'call', 'label' => trans('admin::app.components.activities.index.calls')],
                     ['name' => 'description', 'label' => trans('admin::app.leads.view.tabs.description')],
                     ['name' => 'products', 'label' => trans('admin::app.leads.view.tabs.products')],
                     ['name' => 'quotes', 'label' => trans('admin::app.leads.view.tabs.quotes')],
-                    ...$pbxCallHistoryExtraType,
                 ]"
             >
+                <!-- Pbx-merged call history (replaces the native Activity-only "Chamadas" content) -->
+                <x-slot:call>
+                    @include ('pbx::partials.call-history-panel', [
+                        'personId' => $lead->person->id ?? null,
+                        'pbxHistoryAvailable' => $pbxHistoryAvailable,
+                    ])
+                </x-slot>
+
                 <!-- Products -->
                 <x-slot:products>
                     @include ('admin::leads.view.products')
@@ -153,13 +174,6 @@
                         {{ $lead->description }}
                     </div>
                 </x-slot>
-
-                @if ($lead?->person && bouncer()->hasPermission('leads.calls'))
-                    <!-- Pbx call history -->
-                    <x-slot:pbx_call_history>
-                        @include ('pbx::partials.call-history-panel', ['personId' => $lead->person->id])
-                    </x-slot>
-                @endif
             </x-admin::activities>
 
             {!! view_render_event('admin.leads.view.activities.after', ['lead' => $lead]) !!}

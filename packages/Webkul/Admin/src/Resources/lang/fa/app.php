@@ -1967,9 +1967,7 @@ return [
             'tabs' => [
                 'description' => 'توضیحات',
                 'products' => 'محصولات',
-                'quotes' => 'نقل‌قول‌ها',
-                'pbx-call-history' => 'تاریخچه تماس‌ها',
-            ],
+                'quotes' => 'نقل‌قول‌ها',            ],
             'attributes' => [
                 'title' => 'درباره سرنخ',
             ],

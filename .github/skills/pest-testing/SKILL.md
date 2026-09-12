@@ -135,6 +135,25 @@ it('has valid emails', function (string $email) {
 - Forgetting to use `assertSuccessful()` and other specific helpers
 - Skipping `--pest` when creating tests
 - Ignoring helper utilities already available in `tests/Pest.php`
+- **This install has no `.env.testing` and no `<env>` override in
+  `phpunit.xml`** — `php artisan test` runs against the exact same
+  `krayin_crm` database `.env` points at, the one the live dev app also
+  uses. `uses(DatabaseTransactions::class)` still rolls back everything a
+  test itself writes, so tests don't leak into each other or into the dev
+  app — but a query with no scoping at all (`Model::where('type',
+  'x')->count()`, `Model::withoutGlobalScopes()->get()`) sees whatever
+  the dev database *already* had before the test ran, not an empty table.
+  Confirmed the hard way: a test asserting an exact `type == 'call'`
+  Activity count broke the moment a real Activity got created through the
+  live app for unrelated manual verification — the test had been passing
+  by accident, not because it was actually isolated. Scope every
+  assertion to rows the test itself created (by the specific id(s) it
+  generated — `whereHas('leads', fn ($q) => $q->where('leads.id',
+  $lead->id))`, not a bare `where('type', ...)`), and don't rely on a
+  bare model scope (like `BelongsToTenant`) for isolation either — outside
+  an HTTP request that actually ran the `tenant` middleware, nothing
+  scopes it, and even inside one, an explicit id-based query is more
+  obviously correct than trusting ambient state.
 
 ## Testing Best Practices
 

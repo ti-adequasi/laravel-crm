@@ -58,11 +58,11 @@ function enableHistoryPbxForTenant(int $tenantId): void
  * maps a normalized number to the raw `items` array /v1/calls would return
  * for it, so a test can prove numbers are queried separately and merged.
  */
-function mockHistoryPbxClient(array $callsByNumber = [], ?array $recordingUrlResponse = null): PbxClient
+function mockHistoryPbxClient(array $callsByNumber = [], ?array $recordingUrlResponse = null, ?array $intelResponse = null): PbxClient
 {
-    return new class($callsByNumber, $recordingUrlResponse) extends PbxClient
+    return new class($callsByNumber, $recordingUrlResponse, $intelResponse) extends PbxClient
     {
-        public function __construct(private array $callsByNumber, private ?array $recordingUrlResponse) {}
+        public function __construct(private array $callsByNumber, private ?array $recordingUrlResponse, private ?array $intelResponse) {}
 
         public function isConfigured(): bool
         {
@@ -77,6 +77,16 @@ function mockHistoryPbxClient(array $callsByNumber = [], ?array $recordingUrlRes
         public function recordingSignedUrl(string $xmlCdrUuid): array
         {
             return $this->recordingUrlResponse ?? [];
+        }
+
+        public function intel(string $xmlCdrUuid): array
+        {
+            return $this->intelResponse ?? ['xml_cdr_uuid' => $xmlCdrUuid, 'modules' => []];
+        }
+
+        public function analyze(string $xmlCdrUuid, bool $force = false): array
+        {
+            return ['xml_cdr_uuid' => $xmlCdrUuid, 'status' => 'queued'];
         }
     };
 }
@@ -232,4 +242,56 @@ it('reports a clean failure when the recording url response has no recognizable 
     test()->actingAs($user)
         ->get(route('admin.pbx.history.recording-url', 'some-cdr-uuid'))
         ->assertStatus(502);
+});
+
+it('returns the AI intel modules already recorded for a call', function () {
+    $tenant = app(TenantRepository::class)->create(['name' => 'History Intel Tenant', 'code' => 'history-intel-'.uniqid(), 'is_active' => true]);
+    enableHistoryPbxForTenant($tenant->id);
+    $user = makeHistoryTestTenantUser($tenant->id);
+
+    $intelResponse = [
+        'xml_cdr_uuid' => 'some-cdr-uuid',
+        'modules' => [
+            'transcript' => ['analysis_type' => 'transcript', 'status' => 'done', 'result' => ['text' => 'Hello there.']],
+            'qa' => ['analysis_type' => 'qa', 'status' => 'done', 'result' => ['resumo' => 'A short call.', 'nota' => 5, 'sentimento' => 'neutro']],
+        ],
+    ];
+
+    app()->instance(PbxClient::class, mockHistoryPbxClient(intelResponse: $intelResponse));
+
+    test()->actingAs($user)
+        ->get(route('admin.pbx.history.intel', 'some-cdr-uuid'))
+        ->assertOk()
+        ->assertJson($intelResponse);
+});
+
+it('refuses to fetch intel when the tenant has no PBX configured', function () {
+    $tenant = app(TenantRepository::class)->create(['name' => 'History Intel No Pbx Tenant', 'code' => 'history-intel-no-pbx-'.uniqid(), 'is_active' => true]);
+    $user = makeHistoryTestTenantUser($tenant->id);
+
+    test()->actingAs($user)
+        ->get(route('admin.pbx.history.intel', 'some-cdr-uuid'))
+        ->assertStatus(422);
+});
+
+it('starts an analysis and returns a confirmation message', function () {
+    $tenant = app(TenantRepository::class)->create(['name' => 'History Analyze Tenant', 'code' => 'history-analyze-'.uniqid(), 'is_active' => true]);
+    enableHistoryPbxForTenant($tenant->id);
+    $user = makeHistoryTestTenantUser($tenant->id);
+
+    app()->instance(PbxClient::class, mockHistoryPbxClient());
+
+    test()->actingAs($user)
+        ->post(route('admin.pbx.history.analyze', 'some-cdr-uuid'))
+        ->assertOk()
+        ->assertJsonStructure(['message']);
+});
+
+it('refuses to start an analysis when the tenant has no PBX configured', function () {
+    $tenant = app(TenantRepository::class)->create(['name' => 'History Analyze No Pbx Tenant', 'code' => 'history-analyze-no-pbx-'.uniqid(), 'is_active' => true]);
+    $user = makeHistoryTestTenantUser($tenant->id);
+
+    test()->actingAs($user)
+        ->post(route('admin.pbx.history.analyze', 'some-cdr-uuid'))
+        ->assertStatus(422);
 });

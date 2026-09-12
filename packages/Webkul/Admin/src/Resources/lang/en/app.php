@@ -1969,9 +1969,7 @@ return [
             'tabs' => [
                 'description' => 'Description',
                 'products' => 'Products',
-                'quotes' => 'Quotes',
-                'pbx-call-history' => 'Call History',
-            ],
+                'quotes' => 'Quotes',            ],
             'attributes' => [
                 'title' => 'About Lead',
             ],

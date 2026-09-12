@@ -119,6 +119,44 @@ class PbxClient
     }
 
     /**
+     * Every AI "intelligence" module already recorded for a call —
+     * `{xml_cdr_uuid, modules: {<name>: {analysis_type, status, result,
+     * override, reviewed, error, updated_at}}}`, confirmed directly
+     * against a real, already-analyzed call (this domain already had one
+     * from testing done directly on the PBX side): the modules seen in
+     * practice are `transcript` (`result.text`/`.segments`/`.language`/
+     * `.duration`), `qa` (`result.resumo` — the call summary — plus
+     * `.nota`/`.sentimento`/`.categoria`), `actions`
+     * (`.acoes`/`.risco`/`.alertas`), and `sales`
+     * (`.temperatura`/`.proximo_passo`/`.objecoes`/`.sinais_compra`/
+     * `.tentou_fechamento`) — this app doesn't hardcode that specific set
+     * anywhere, since the API gives no enumeration of which modules can
+     * exist, only a `POST .../intel/{module}` to run one by name. A call
+     * with nothing analyzed yet still returns 200 with an empty/absent
+     * `modules`, not an error.
+     */
+    public function intel(string $xmlCdrUuid): array
+    {
+        return $this->client()->get("/v1/calls/{$xmlCdrUuid}/intel")->throw()->json();
+    }
+
+    /**
+     * Triggers transcription + AI analysis for one call — described as
+     * "on demand" in the API's own docs and, per the sibling per-module
+     * endpoint's summary, running in the background, so this app treats
+     * it as fire-and-forget and expects the caller to poll intel()
+     * afterward rather than assuming this response already carries the
+     * finished result. $force re-runs it even if already analyzed (the
+     * API's own default is false — never re-run without being asked to,
+     * since a real call already visibly costs whatever this PBX's AI
+     * backend charges per analysis).
+     */
+    public function analyze(string $xmlCdrUuid, bool $force = false): array
+    {
+        return $this->client()->post("/v1/calls/{$xmlCdrUuid}/analyze".($force ? '?force=true' : ''))->throw()->json();
+    }
+
+    /**
      * A short-lived, unauthenticated URL for playing back one call's
      * recording directly in an <audio> tag — the response shape isn't in
      * the OpenAPI spec (declared untyped, same as the dialer endpoints),

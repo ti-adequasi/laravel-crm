@@ -32,5 +32,7 @@ Route::middleware(['web', 'admin_locale', 'tenant', 'user'])
         Route::controller(PbxCallHistoryController::class)->prefix('pbx/history')->group(function () {
             Route::get('', 'index')->name('admin.pbx.history.index');
             Route::get('{xmlCdrUuid}/recording-url', 'recordingUrl')->name('admin.pbx.history.recording-url');
+            Route::get('{xmlCdrUuid}/intel', 'intel')->name('admin.pbx.history.intel');
+            Route::post('{xmlCdrUuid}/analyze', 'analyze')->name('admin.pbx.history.analyze');
         });
     });

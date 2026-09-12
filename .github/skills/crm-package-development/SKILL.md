@@ -587,6 +587,31 @@ to that shape:
   `@include('your_package::partials.your-panel', [...])` so the actual
   new code stays in your own package almost entirely.
 
+  The same mechanism also lets a page **replace one of the 9 *native*
+  type-tabs' content** (not just add a new one) — reuse the built-in
+  tab's own name and label instead of inventing a new one. The
+  content-switching itself keys off `extraTypes` only, not `types`:
+  `<template v-if="! extraTypes.find(type => type.name == selectedType)">`
+  (native activity list) `<template v-else>` (the matching `<slot
+  :name="type.name">`) — so an `extraTypes` entry named e.g. `call`
+  routes that tab's content to your slot regardless of `call` also being
+  one of `types`' own defaults. The part that bites: `mounted()` does
+  `this.extraTypes.forEach(type => this.types.push(type))`, merging
+  `extraTypes` into `types` for the *header row's own* `v-for="type in
+  types"` loop — so if `call` is left in the `:types` override too, it
+  renders as two visually-duplicate tabs, one from each array. Override
+  `:types` with the same 8 entries minus the one you're taking over
+  (there's no PHP-reachable copy of that default array — it only exists
+  as the JS literal in `components/activities/index.blade.php`, so it has
+  to be retyped by hand) before adding your own entry, under the same
+  name, to `extraTypes`. One real consequence worth knowing before
+  choosing this over a brand-new tab: your slot fully replaces the native
+  rendering for that tab, including its rich per-item template (edit/
+  delete "more actions", attachments, participants) — creating/editing
+  still works exactly as before through whatever normally creates that
+  type of Activity, but *viewing* it inside this tab is only as rich as
+  what your own slot content chooses to render.
+
 **4. `vendor:publish` view override — replaces a whole core view, not just a
 point inside it.** Ship a same-path replacement under your package's
 `Resources/views/` and publish it to Laravel's vendor-override location from

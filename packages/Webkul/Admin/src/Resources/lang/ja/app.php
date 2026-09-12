@@ -1965,9 +1965,7 @@ return [
             'tabs' => [
                 'description' => '説明',
                 'products' => '製品',
-                'quotes' => '見積',
-                'pbx-call-history' => '通話履歴',
-            ],
+                'quotes' => '見積',            ],
             'attributes' => [
                 'title' => 'リード情報',
             ],

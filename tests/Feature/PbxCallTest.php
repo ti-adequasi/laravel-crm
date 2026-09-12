@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Webkul\Activity\Repositories\ActivityRepository;
+use Webkul\Activity\Models\Activity;
 use Webkul\Lead\Models\Lead;
 use Webkul\Lead\Repositories\LeadRepository;
 use Webkul\Pbx\Models\PbxCall;
@@ -262,7 +262,11 @@ it('finalizes the call and auto-logs an Activity once the PBX reports a terminal
     expect($call->hasEnded())->toBeTrue()
         ->and($call->activity_logged_at)->not->toBeNull();
 
-    $activity = app(ActivityRepository::class)->findWhere(['type' => 'call'])->first();
+    // Scoped to this test's own lead, not a bare type='call' count — this
+    // suite shares its database with the live dev app (no isolated test
+    // DB configured), so an unscoped query can pick up unrelated 'call'
+    // Activities that happen to already exist there.
+    $activity = Activity::whereHas('leads', fn ($q) => $q->where('leads.id', $lead->id))->where('type', 'call')->first();
 
     expect($activity)->not->toBeNull()
         ->and($activity->is_done)->toBeTruthy()
@@ -299,7 +303,7 @@ it('does not double-log the Activity on a second poll after the call already end
     test()->actingAs($user)->get(route('admin.pbx.calls.status', $call->call_uuid))->assertOk();
     test()->actingAs($user)->get(route('admin.pbx.calls.status', $call->call_uuid))->assertOk();
 
-    expect(app(ActivityRepository::class)->findWhere(['type' => 'call'])->count())->toBe(1);
+    expect(Activity::whereHas('leads', fn ($q) => $q->where('leads.id', $lead->id))->where('type', 'call')->count())->toBe(1);
 });
 
 it('does not create an Activity when auto_log_activity is off, but still marks the call as handled', function () {
@@ -325,7 +329,7 @@ it('does not create an Activity when auto_log_activity is off, but still marks t
     test()->actingAs($user)->get(route('admin.pbx.calls.status', $call->call_uuid))->assertOk();
 
     expect($call->fresh()->activity_logged_at)->not->toBeNull()
-        ->and(app(ActivityRepository::class)->findWhere(['type' => 'call'])->count())->toBe(0);
+        ->and(Activity::whereHas('leads', fn ($q) => $q->where('leads.id', $lead->id))->where('type', 'call')->count())->toBe(0);
 });
 
 it('lets hangup finalize an in-progress call', function () {

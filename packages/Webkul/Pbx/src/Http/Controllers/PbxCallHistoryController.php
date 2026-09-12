@@ -105,6 +105,52 @@ class PbxCallHistoryController extends Controller
     }
 
     /**
+     * Whatever AI transcript/summary modules are already recorded for one
+     * call — see PbxClient::intel()'s own docblock for the module names
+     * and fields confirmed against real data. Returns 200 with an empty
+     * `modules` rather than 404 when nothing has been analyzed yet; the
+     * frontend uses that to decide whether to offer "Gerar" instead of
+     * showing results.
+     */
+    public function intel(string $xmlCdrUuid): JsonResponse
+    {
+        try {
+            $response = $this->pbxClient->intel($xmlCdrUuid);
+        } catch (PbxNotConfiguredException $e) {
+            return response()->json(['message' => trans('pbx::app.calls.not-configured')], 422);
+        } catch (RequestException $e) {
+            return response()->json([
+                'message' => trans('pbx::app.calls.intel-fetch-failed', ['error' => PbxClient::errorDetail($e) ?? $e->getMessage()]),
+            ], 502);
+        }
+
+        return response()->json($response);
+    }
+
+    /**
+     * Triggers transcription + AI analysis for one call — a real, costed
+     * operation on the PBX's own AI backend, only ever run when a user
+     * explicitly presses "Gerar transcrição e resumo", never automatically
+     * or speculatively. See PbxClient::analyze()'s own docblock on why
+     * this doesn't wait for the result — the frontend polls intel()
+     * afterward.
+     */
+    public function analyze(string $xmlCdrUuid): JsonResponse
+    {
+        try {
+            $this->pbxClient->analyze($xmlCdrUuid);
+        } catch (PbxNotConfiguredException $e) {
+            return response()->json(['message' => trans('pbx::app.calls.not-configured')], 422);
+        } catch (RequestException $e) {
+            return response()->json([
+                'message' => trans('pbx::app.calls.analyze-failed', ['error' => PbxClient::errorDetail($e) ?? $e->getMessage()]),
+            ], 502);
+        }
+
+        return response()->json(['message' => trans('pbx::app.calls.analyze-started')]);
+    }
+
+    /**
      * A best-effort string to query /v1/calls' own `number` filter with —
      * looser than PhoneNumberNormalizer::normalize(), deliberately: that
      * one exists to keep Phase 3 from ever *dialing* a malformed number,

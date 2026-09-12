@@ -2,7 +2,6 @@
 
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Webkul\Activity\Models\Activity;
-use Webkul\Activity\Repositories\ActivityRepository;
 use Webkul\Lead\Models\Lead;
 use Webkul\Lead\Repositories\LeadRepository;
 use Webkul\Pbx\Models\PbxCall;
@@ -125,7 +124,7 @@ it('finalizes a stuck call older than the cutoff and logs its Activity', functio
         ->assertSuccessful();
 
     expect($call->fresh()->hasEnded())->toBeTrue()
-        ->and(app(ActivityRepository::class)->findWhere(['type' => 'call'])->count())->toBe(1);
+        ->and(Activity::whereHas('leads', fn ($q) => $q->where('leads.id', $lead->id))->where('type', 'call')->count())->toBe(1);
 });
 
 it('leaves a call younger than the cutoff alone', function () {
@@ -179,7 +178,10 @@ it('processes stuck calls across multiple tenants in one run, each finalized und
     expect($callA->fresh()->hasEnded())->toBeTrue()
         ->and($callB->fresh()->hasEnded())->toBeTrue();
 
-    $activities = Activity::withoutGlobalScopes()->where('type', 'call')->get();
+    $activities = Activity::withoutGlobalScopes()
+        ->whereHas('leads', fn ($q) => $q->whereIn('leads.id', [$leadA->id, $leadB->id]))
+        ->where('type', 'call')
+        ->get();
 
     expect($activities->pluck('tenant_id')->sort()->values()->all())->toBe([$tenantA->id, $tenantB->id]);
 });
