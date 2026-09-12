@@ -7,6 +7,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 use Webkul\Core\Repositories\CoreConfigRepository;
 use Webkul\Core\SystemConfig\Item;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class SystemConfig
 {
@@ -172,11 +173,31 @@ class SystemConfig
 
     /**
      * Retrieve information for configuration
+     *
+     * Two-level fallback when a tenant is bound: that tenant's own row
+     * first (a real per-tenant override — e.g. its own Magic AI API key),
+     * else the global row (tenant_id NULL), else the field's static
+     * default. A super-admin (no tenant bound) skips straight to the
+     * global row, exactly as before per-tenant config existed.
      */
     public function getConfigData(string $field): mixed
     {
+        $tenantId = CurrentTenant::id();
+
+        if ($tenantId !== null) {
+            $tenantConfigValue = $this->coreConfigRepository->findOneWhere([
+                'code' => $field,
+                'tenant_id' => $tenantId,
+            ]);
+
+            if ($tenantConfigValue) {
+                return $tenantConfigValue->value;
+            }
+        }
+
         $coreConfigValue = $this->coreConfigRepository->findOneWhere([
             'code' => $field,
+            'tenant_id' => null,
         ]);
 
         if (! $coreConfigValue) {

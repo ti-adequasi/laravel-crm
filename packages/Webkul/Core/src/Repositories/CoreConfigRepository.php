@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Webkul\Core\Contracts\CoreConfig;
 use Webkul\Core\Eloquent\Repository;
 use Webkul\Core\Traits\Sanitizer;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class CoreConfigRepository extends Repository
 {
@@ -99,10 +100,19 @@ class CoreConfigRepository extends Repository
 
     /**
      * Create core configuration.
+     *
+     * Every lookup below is scoped to the CURRENT tenant (see
+     * scopedConfigQuery()) rather than a bare `where('code', ...)` — a
+     * tenant-scoped user's save must only ever find (and touch) their own
+     * tenant's row, never the global one, and every new row it creates is
+     * stamped with that same tenant. A super-admin (no tenant bound) reads
+     * and writes the global row, exactly as before this feature existed.
      */
     public function create(array $data): void
     {
         unset($data['_token']);
+
+        $tenantId = CurrentTenant::id();
 
         $preparedData = [];
 
@@ -114,7 +124,7 @@ class CoreConfigRepository extends Repository
                     is_array($value)
                     && isset($value['delete'])
                 ) {
-                    $coreConfigValues = $this->model->where('code', $fieldName)->get();
+                    $coreConfigValues = $this->scopedConfigQuery($fieldName)->get();
 
                     if ($coreConfigValues->isNotEmpty()) {
                         foreach ($coreConfigValues as $coreConfig) {
@@ -135,7 +145,7 @@ class CoreConfigRepository extends Repository
                     foreach ($value as $key => $val) {
                         $fieldNameWithKey = $fieldName.'.'.$key;
 
-                        $coreConfigValues = $this->model->where('code', $fieldNameWithKey)->get();
+                        $coreConfigValues = $this->scopedConfigQuery($fieldNameWithKey)->get();
                         if (request()->hasFile($fieldNameWithKey)) {
                             $uploadedFile = request()->file($fieldNameWithKey);
 
@@ -160,7 +170,7 @@ class CoreConfigRepository extends Repository
                                 parent::update(['code' => $fieldNameWithKey, 'value' => $val], $coreConfig->id);
                             }
                         } else {
-                            parent::create(['code' => $fieldNameWithKey, 'value' => $val]);
+                            parent::create(['tenant_id' => $tenantId, 'code' => $fieldNameWithKey, 'value' => $val]);
                         }
                     }
                 } else {
@@ -190,19 +200,39 @@ class CoreConfigRepository extends Repository
 
         if (! empty($preparedData)) {
             foreach ($preparedData as $dataItem) {
-                $coreConfigValues = $this->model->where('code', $dataItem['code'])->get();
+                $coreConfigValues = $this->scopedConfigQuery($dataItem['code'])->get();
 
                 if ($coreConfigValues->isNotEmpty()) {
                     foreach ($coreConfigValues as $coreConfig) {
                         parent::update($dataItem, $coreConfig->id);
                     }
                 } else {
-                    parent::create($dataItem);
+                    parent::create([...$dataItem, 'tenant_id' => $tenantId]);
                 }
             }
         }
 
         Event::dispatch('core.configuration.save.after');
+    }
+
+    /**
+     * A core_config query for the given code, scoped to the CURRENT
+     * tenant — the tenant's own row (tenant_id = X) if one is bound, else
+     * the global row (tenant_id IS NULL). Deliberately not the
+     * BelongsToTenant trait/global scope: that would simply hide the
+     * global row from a tenant-scoped request instead of falling back to
+     * it, which is the opposite of what per-tenant *overrides* need.
+     */
+    protected function scopedConfigQuery(string $code)
+    {
+        $tenantId = CurrentTenant::id();
+
+        return $this->model->where('code', $code)
+            ->when(
+                $tenantId === null,
+                fn ($query) => $query->whereNull('tenant_id'),
+                fn ($query) => $query->where('tenant_id', $tenantId)
+            );
     }
 
     /**

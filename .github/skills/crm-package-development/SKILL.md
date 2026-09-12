@@ -644,9 +644,25 @@ stock Krayin field either omits `validation` entirely for an optional field
 (the omission itself is what makes it optional in both ecosystems — do the
 same instead of writing `nullable`) or uses only rule names that exist
 natively in `@vee-validate/rules` (`required`, `email`, `min`, `max`,
-`required_if`, …) or in the translation map. When unsure, grep
-`packages/Webkul/Admin/src/Config/core_config.php` for a comparable field's
-`validation` value rather than reasoning from Laravel's rule set alone.
+`required_if`, `required_unless`, …) or in the translation map. When unsure,
+grep `packages/Webkul/Admin/src/Config/core_config.php` for a comparable
+field's `validation` value rather than reasoning from Laravel's rule set
+alone — and actually submit the form afterward (open devtools, watch for a
+JS error and a real POST request), not just confirm the field renders. A
+field rendering fine proves nothing about whether its rule crashes
+VeeValidate: Magic AI's `other_model` field shipped with
+`required_unless:provider,openrouter` — a real Laravel rule, but not one
+VeeValidate had, since only `required_if` had ever been hand-registered
+(`packages/Webkul/Admin/src/Resources/assets/js/plugins/vee-validate.js`) —
+and it silently broke saving on the *entire* Configuration page it lived on,
+not just that one field, for as long as it went unnoticed. Now fixed by
+registering `required_unless` there too, reading the sibling field it
+depends on via VeeValidate's own per-form `ctx.form` — the same mechanism
+its built-in `confirmed` rule uses for cross-field checks — so it's safe to
+reach for again. A JS-side fix needs a rebuild to actually ship:
+`cd packages/Webkul/Admin && npm run build` (this package's own
+`vite.config.js`/`package.json` — the root-level `npm run build` compiles
+different, unrelated resources and won't touch the admin bundle at all).
 
 Read a saved value back with
 `core()->getConfigData('your_module.settings.api_keys.api_key')` — falling

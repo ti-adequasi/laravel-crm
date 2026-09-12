@@ -15,6 +15,7 @@ class CoreConfig extends Model implements CoreConfigContract
     protected $table = 'core_config';
 
     protected $fillable = [
+        'tenant_id',
         'code',
         'value',
         'locale',

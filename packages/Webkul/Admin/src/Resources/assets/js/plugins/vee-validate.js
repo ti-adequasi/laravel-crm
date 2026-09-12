@@ -116,6 +116,29 @@ export default {
             return true;
         });
 
+        /**
+         * Laravel's required_unless:field,value1,value2,... reaching this
+         * rule as-is, string params and all — SystemConfig/ItemField's
+         * getValidations() only renames a few rules (e.g. min -> min_value)
+         * before handing a config field's raw Laravel validation string
+         * straight to `rules=`; it never existed as a vee-validate rule at
+         * all before this, which crashed validation entirely for any field
+         * using it (Magic AI's other_model) and silently blocked every
+         * save on the whole Configuration page it appeared on, not just
+         * that one field. `ctx.form` is vee-validate's own per-form field
+         * registry — the same mechanism its built-in `confirmed` rule uses
+         * to read a sibling field's live value.
+         */
+        defineRule("required_unless", (value, params, ctx) => {
+            const [otherField, ...allowedValues] = params ?? [];
+
+            if (allowedValues.map(String).includes(String(ctx?.form?.[otherField]))) {
+                return true;
+            }
+
+            return value !== null && value !== undefined && value !== '';
+        });
+
         defineRule("", () => true);
 
         defineRule("date_format", (value) => {

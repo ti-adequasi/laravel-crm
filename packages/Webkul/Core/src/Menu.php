@@ -7,6 +7,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Webkul\Core\Menu\MenuItem;
 use Webkul\Core\Repositories\CoreConfigRepository;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class Menu
 {
@@ -140,13 +141,27 @@ class Menu
 
     /**
      * Load every custom menu name in a single query, keyed by menu key.
+     *
+     * core_config rows are tenant-scoped since Phase 2.3 (a global row,
+     * tenant_id NULL, plus an optional per-tenant override sharing the
+     * same code) — reading with a bare `where('code', 'like', ...)` here
+     * would mix every tenant's menu renames into one pot. Global rows are
+     * mapped first and a bound tenant's own rows layered on after, so a
+     * tenant-specific rename wins for its key while every other key still
+     * falls back to the global rename — the same precedence
+     * SystemConfig::getConfigData() applies to a single key at a time.
      */
     private function loadConfiguredNames(): array
     {
         $prefix = 'general.settings.menu.';
+        $tenantId = CurrentTenant::id();
 
-        return $this->coreConfigRepository
-            ->findWhere([['code', 'like', $prefix.'%']], ['code', 'value'])
+        $rows = $this->coreConfigRepository
+            ->findWhere([['code', 'like', $prefix.'%']], ['code', 'value', 'tenant_id']);
+
+        return $rows
+            ->filter(fn ($config) => $config->tenant_id === null || $config->tenant_id == $tenantId)
+            ->sortBy(fn ($config) => $config->tenant_id === null ? 0 : 1)
             ->mapWithKeys(fn ($config) => [Str::after($config->code, $prefix) => $config->value])
             ->all();
     }
