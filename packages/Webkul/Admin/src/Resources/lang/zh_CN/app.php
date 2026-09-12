@@ -1141,7 +1141,6 @@ return [
                 'delete-success' => '用户删除成功。',
                 'last-delete-error' => '至少需要保留一个用户。',
                 'extension' => 'Extension',
-                'invalid-extension' => 'This extension was not found in the PBX for your tenant.',
                 'mass-delete-failed' => '用户无法删除。',
                 'mass-delete-success' => '用户删除成功。',
                 'mass-update-failed' => '用户无法更新。',

@@ -107,7 +107,9 @@ it('refuses to originate when the tenant has no PBX configured', function () {
         ->post(route('admin.pbx.calls.originate'), ['lead_id' => $lead->id, 'person_id' => $lead->person->id, 'phone' => '11987654321'])
         ->assertStatus(422);
 
-    expect(PbxCall::withoutGlobalScopes()->count())->toBe(0);
+    // Scoped to this test's own lead, not a bare count — see
+    // pest-testing/SKILL.md on why this suite can't assume an empty table.
+    expect(PbxCall::withoutGlobalScopes()->where('lead_id', $lead->id)->count())->toBe(0);
 });
 
 it('refuses to originate when the acting user has no extension configured', function () {
@@ -135,7 +137,7 @@ it('rejects a phone number that cannot be normalized', function () {
         ->post(route('admin.pbx.calls.originate'), ['lead_id' => $lead->id, 'person_id' => $lead->person->id, 'phone' => 'not-a-phone'])
         ->assertStatus(422);
 
-    expect(PbxCall::withoutGlobalScopes()->count())->toBe(0);
+    expect(PbxCall::withoutGlobalScopes()->where('lead_id', $lead->id)->count())->toBe(0);
 });
 
 it('originates a call and persists it with the PBX-assigned call_uuid', function () {

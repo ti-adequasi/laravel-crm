@@ -15,7 +15,6 @@ use Webkul\Admin\Http\Requests\MassDestroyRequest;
 use Webkul\Admin\Http\Requests\MassUpdateRequest;
 use Webkul\Admin\Http\Resources\UserResource;
 use Webkul\Admin\Notifications\User\Create as UserCreatedNotification;
-use Webkul\Pbx\Services\PbxClient;
 use Webkul\User\Contracts\User;
 use Webkul\User\Repositories\GroupRepository;
 use Webkul\User\Repositories\RoleRepository;
@@ -32,34 +31,25 @@ class UserController extends Controller
         protected UserRepository $userRepository,
         protected GroupRepository $groupRepository,
         protected RoleRepository $roleRepository,
-        protected PbxClient $pbxClient,
     ) {}
 
     /**
-     * Confirms a typed extension actually exists in the tenant's own PBX
-     * user directory — only when the PBX is configured for this tenant at
-     * all; there's nothing to validate against otherwise, and a typo
-     * caught here beats one only discovered later trying to place a call.
-     * A PBX outage while saving doesn't block the save — the extension
-     * can still be corrected once the PBX is reachable again.
+     * No longer blocks on a miss — confirmed directly (not assumed) that
+     * GET /v1/users isn't a reliable directory of every real, dialable
+     * extension: a genuinely working SIP extension, created and usable on
+     * the PBX side, simply didn't appear in it at all. The PBX links a
+     * "user" (this endpoint's own concept) to a SIP extension separately
+     * from provisioning the extension itself, so a real extension can
+     * legitimately predate — or never get — a matching PBX "user" entry.
+     * Rejecting on that basis would incorrectly block valid extensions,
+     * so this field stays free text with no PBX-side check at all for
+     * now; kept as its own method (still wired into the validation rules
+     * below, just never failing) so a more reliable check can replace
+     * this one later without touching the call sites.
      */
     protected function validateExtensionAgainstPbx(string $attribute, mixed $value, \Closure $fail): void
     {
-        if (empty($value) || ! $this->pbxClient->isConfigured()) {
-            return;
-        }
-
-        try {
-            $users = $this->pbxClient->users();
-        } catch (\Throwable $e) {
-            return;
-        }
-
-        $validExtensions = collect($users['items'] ?? [])->pluck('extension')->filter()->all();
-
-        if (! in_array($value, $validExtensions, true)) {
-            $fail(trans('admin::app.settings.users.index.invalid-extension'));
-        }
+        // Intentionally a no-op — see docblock above.
     }
 
     /**

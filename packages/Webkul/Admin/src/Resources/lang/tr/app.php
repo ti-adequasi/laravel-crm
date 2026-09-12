@@ -1141,7 +1141,6 @@ return [
                 'delete-success' => 'Kullanıcı başarıyla silindi.',
                 'last-delete-error' => 'En az bir kullanıcı gereklidir.',
                 'extension' => 'Extension',
-                'invalid-extension' => 'This extension was not found in the PBX for your tenant.',
                 'mass-delete-failed' => 'Kullanıcılar silinemedi.',
                 'mass-delete-success' => 'Kullanıcılar başarıyla silindi.',
                 'mass-update-failed' => 'Kullanıcılar güncellenemedi.',

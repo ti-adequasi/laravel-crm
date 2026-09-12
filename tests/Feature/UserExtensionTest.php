@@ -50,8 +50,15 @@ it('accepts any extension when the tenant has no PBX configured', function () {
     expect($user->fresh()->extension)->toBe('1234');
 });
 
-it('rejects an extension that does not exist in the tenant\'s own PBX directory', function () {
-    $tenant = app(TenantRepository::class)->create(['name' => 'Ext Invalid Tenant', 'code' => 'ext-invalid-'.uniqid(), 'is_active' => true]);
+it('accepts an extension even when it does not appear in the tenant\'s own PBX directory', function () {
+    // Was a rejection until confirmed live, against a real PBX, that
+    // GET /v1/users doesn't reliably list every real, dialable extension
+    // — a genuinely working SIP extension didn't appear there at all.
+    // The PBX links its own "user" concept to a SIP extension separately
+    // from provisioning the extension itself, so absence from this list
+    // no longer means the extension is invalid — see
+    // UserController::validateExtensionAgainstPbx()'s own docblock.
+    $tenant = app(TenantRepository::class)->create(['name' => 'Ext Not In Directory Tenant', 'code' => 'ext-not-in-directory-'.uniqid(), 'is_active' => true]);
     $user = makeExtensionTestTenantUser($tenant->id);
 
     PbxSetting::create(['tenant_id' => $tenant->id, 'enabled' => true, 'api_key' => 'sk-fake']);
@@ -79,9 +86,9 @@ it('rejects an extension that does not exist in the tenant\'s own PBX directory'
             'view_permission' => 'global',
             'extension' => '9999',
         ])
-        ->assertSessionHasErrors('extension');
+        ->assertOk();
 
-    expect($user->fresh()->extension)->toBeNull();
+    expect($user->fresh()->extension)->toBe('9999');
 });
 
 it('accepts an extension that does exist in the tenant\'s own PBX directory', function () {

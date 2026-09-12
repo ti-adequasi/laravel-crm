@@ -1141,7 +1141,6 @@ return [
                 'delete-success' => 'Usuário excluído com sucesso.',
                 'last-delete-error' => 'É necessário pelo menos um usuário.',
                 'extension' => 'Ramal',
-                'invalid-extension' => 'Este ramal não foi encontrado no PBX do seu tenant.',
                 'mass-delete-failed' => 'Não foi possível excluir os usuários.',
                 'mass-delete-success' => 'Usuários excluídos com sucesso.',
                 'mass-update-failed' => 'Não foi possível atualizar os usuários.',
