@@ -112,6 +112,9 @@
                             <!-- Users Email -->
                             <p class="truncate">@{{ record.email }}</p>
 
+                            <!-- Users Extension -->
+                            <p class="truncate">@{{ record.extension }}</p>
+
                             <!-- Associated Group -->
                             <p class="truncate">@{{ record.group_name }}</p>
 

@@ -8,12 +8,15 @@ return [
 
     'acl' => [
         'title' => 'PBX',
+        'calls-title' => 'Fazer Ligações',
     ],
 
     'settings' => [
         'title' => 'Configurações do PBX',
         'info' => 'Conecte este tenant ao seu próprio domínio no PBX Inovalen — a chave de API sozinha identifica a qual domínio uma requisição pertence, então todo tenant nesta instalação usa o mesmo servidor PBX, cada um com sua própria chave.',
         'enabled' => 'Habilitado',
+        'auto-log-activity' => 'Registrar toda ligação automaticamente',
+        'auto-log-activity-hint' => 'Quando ativado, toda ligação feita pelo CRM é adicionada à timeline do Negócio/Pessoa assim que ela termina — mesmo que a aba do navegador tenha sido fechada antes disso. Desative para fazer ligações sem adicionar itens na timeline; o histórico completo continua disponível de qualquer forma.',
         'api-key' => 'Chave de API',
         'api-key-hint' => 'Deixe em branco para manter a chave já salva.',
         'test-connection' => 'Testar Conexão',
@@ -26,5 +29,23 @@ return [
         'saving' => 'Salvando...',
         'save-success' => 'Configurações do PBX salvas com sucesso.',
         'save-failed-generic' => 'Não foi possível salvar as configurações do PBX. Tente novamente.',
+    ],
+
+    'calls' => [
+        'call-button' => 'Ligar',
+        'hangup-button' => 'Encerrar',
+        'calling' => 'Ligando...',
+        'in-progress' => 'Ligação em andamento',
+        'ended' => 'Ligação encerrada',
+        'not-configured' => 'Este tenant ainda não tem uma conexão com o PBX configurada.',
+        'no-extension' => 'Você ainda não tem um ramal configurado — configure um nas suas configurações de usuário primeiro.',
+        'invalid-phone' => 'Isso não parece ser um número de telefone válido.',
+        'originate-failed' => 'O PBX recusou a ligação: :error',
+        'originate-failed-generic' => 'Não foi possível completar a ligação. Tente novamente.',
+        'not-found' => 'Esta ligação não foi encontrada.',
+        'not-yours' => 'Esta ligação pertence a outro usuário.',
+        'hangup-failed-generic' => 'Não foi possível encerrar a ligação. Ela já pode ter terminado.',
+        'activity-title' => 'Ligação para :phone',
+        'activity-comment' => 'Ligação feita para :phone a partir do ramal :ramal.',
     ],
 ];

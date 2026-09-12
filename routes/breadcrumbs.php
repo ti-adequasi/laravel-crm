@@ -483,6 +483,6 @@ Breadcrumbs::for('tenant.edit', function (BreadcrumbTrail $trail, $tenant) {
 
 // PBX settings — a single settings page, no list screen of its own.
 Breadcrumbs::for('pbx.edit', function (BreadcrumbTrail $trail) {
-    $trail->parent('dashboard');
+    $trail->parent('settings');
     $trail->push(trans('pbx::app.settings.title'), route('admin.pbx.edit'));
 });

@@ -3,6 +3,7 @@
 namespace Webkul\Pbx\Services;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Webkul\Pbx\Exceptions\PbxNotConfiguredException;
 use Webkul\Pbx\Repositories\PbxSettingRepository;
@@ -106,6 +107,30 @@ class PbxClient
     }
 
     /**
+     * A clean, human-readable message from one of the PBX's own error
+     * response shapes, or null if the response isn't shaped like either
+     * one — checked directly against the live PBX, not assumed: GET
+     * /v1/me responds `{"detail": "..."}` on a bad key, while POST
+     * /v1/dialer/calls responds `{"error": {"code", "message"}}` on the
+     * same kind of failure. Every caller falls back to
+     * $e->getMessage() (Laravel's own "HTTP request returned status code
+     * ...: {raw body}" string) when this returns null, rather than ever
+     * showing that raw string to a user when a clean one was available.
+     */
+    public static function errorDetail(RequestException $e): ?string
+    {
+        $body = $e->response->json();
+
+        foreach ([$body['detail'] ?? null, $body['error']['message'] ?? null] as $candidate) {
+            if (is_string($candidate) && $candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * A ready-to-use HTTP client bound to the current tenant's own key —
      * throws PbxNotConfiguredException up front rather than letting an
      * unconfigured tenant reach the PBX with an empty/missing key.
@@ -114,7 +139,14 @@ class PbxClient
     {
         $setting = $this->settingRepository->findForCurrentTenant();
 
-        if (! $setting->exists || empty($setting->api_key)) {
+        // Mirrors isConfigured() exactly — a tenant that has flipped the
+        // "Enabled" switch off must be unable to reach the PBX at all
+        // through any method here, not just see the settings screen as
+        // disconnected. Before this check existed, only isConfigured()
+        // (a UI-visibility check) looked at `enabled`; every actual PBX
+        // call below it — originate() included — would still have gone
+        // through on a saved key alone.
+        if (! $setting->exists || ! $setting->enabled || empty($setting->api_key)) {
             throw new PbxNotConfiguredException;
         }
 

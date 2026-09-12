@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Webkul\Pbx\Http\Controllers\PbxCallController;
 use Webkul\Pbx\Http\Controllers\PbxSettingController;
 
 // 'tenant' before 'user' (really Bouncer, not Laravel's auth middleware) —
@@ -14,5 +15,14 @@ Route::middleware(['web', 'admin_locale', 'tenant', 'user'])
             Route::get('', 'edit')->name('admin.pbx.edit');
             Route::put('', 'update')->name('admin.pbx.update');
             Route::post('test', 'test')->name('admin.pbx.test');
+        });
+
+        // Bound by call_uuid, not the row's numeric id — that's the only
+        // identifier the calling button's own JS ever sees (see
+        // PbxCallController::originate()'s response).
+        Route::controller(PbxCallController::class)->prefix('pbx/calls')->group(function () {
+            Route::post('', 'originate')->name('admin.pbx.calls.originate');
+            Route::get('{callUuid}/status', 'status')->name('admin.pbx.calls.status');
+            Route::delete('{callUuid}', 'hangup')->name('admin.pbx.calls.hangup');
         });
     });

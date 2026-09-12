@@ -27,6 +27,7 @@ class PbxSettingRepository extends Repository
         return $this->model->first() ?? $this->model->newInstance([
             'tenant_id' => CurrentTenant::id(),
             'enabled' => false,
+            'auto_log_activity' => true,
         ]);
     }
 
@@ -41,6 +42,7 @@ class PbxSettingRepository extends Repository
 
         $attributes = [
             'enabled' => $data['enabled'] ?? false,
+            'auto_log_activity' => $data['auto_log_activity'] ?? false,
         ];
 
         // Only overwrite a previously-saved key if a new one was actually

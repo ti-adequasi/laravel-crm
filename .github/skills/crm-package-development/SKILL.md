@@ -546,6 +546,25 @@ to that shape:
   form both wanting a plain `name` field — fixed by namespacing the second
   form's fields (`new_user_name`, not `name`), not by giving it a different
   `id` alone (`id` isn't what gets submitted).
+- **A `.before`/`.after` pair existing around a `@foreach` doesn't mean it
+  fires per iteration — check whether it wraps the whole loop before
+  assuming you can hook "next to this one row."**
+  `admin.leads.view.person.contact_numbers.before`/`.after` in
+  `packages/Webkul/Admin/src/Resources/views/leads/view/person.blade.php`
+  sit outside the loop over a Person's phone numbers, so `.after` fires
+  once after every number has already rendered, not once per number — not
+  discoverable from the event name alone, only from reading where it
+  actually sits. When you need one more granular than what's there
+  (Pbx's click-to-call button, one per number), the smallest fix is a new
+  event *inside* the loop, following the exact naming/placement style of
+  its neighbors (here, `admin.leads.view.person.contact_numbers.row`,
+  passing both the loop variable and whatever the `.before`/`.after` pair
+  already passes) — a one-line, purely additive core edit, not a
+  `vendor:publish` override of the whole file (mechanism #4 below) just to
+  reach one spot inside it, and not a hand-rolled Vue-side DOM-insertion
+  workaround either (a custom element string inserted into already-mounted
+  DOM via raw `innerHTML` after the fact is never compiled/hydrated by
+  Vue — it just sits there inert).
 
 **4. `vendor:publish` view override — replaces a whole core view, not just a
 point inside it.** Ship a same-path replacement under your package's
@@ -792,26 +811,71 @@ ops-managed deploy keep using `.env` instead of the database if it prefers.
 
 ---
 
-## Package-Owned Scheduled Commands
+## A Foreign Key Must Match the Referenced Column's Real Type Exactly
 
-Register the command and its schedule from the module's own provider — never
-add it to `app/Console/Kernel.php`:
+`$table->foreignId('lead_id')` (an `unsignedBigInteger`) fails at migrate
+time — `SQLSTATE[HY000]: ... errno: 150 "Foreign key constraint is
+incorrectly formed"` — the moment the referenced table's own `id` isn't
+also a `bigint unsigned`. Not every table in this codebase is: `tenants.id`
+is `bigint unsigned`, but `users.id`/`leads.id`/`persons.id` are plain `int
+unsigned` (checked directly against `information_schema.columns`, not
+assumed from one example). Match column-for-column:
 
 ```php
-public function boot(): void
-{
-    if ($this->app->runningInConsole()) {
-        $this->commands([YourCommand::class]);
-
-        $this->app->booted(function () {
-            $this->app->make(\Illuminate\Console\Scheduling\Schedule::class)
-                ->command(YourCommand::class)
-                ->everyMinute()
-                ->withoutOverlapping();
-        });
-    }
-}
+$table->unsignedBigInteger('tenant_id')->nullable();      // tenants.id is bigint unsigned
+$table->unsignedInteger('lead_id')->nullable();            // leads.id is plain int unsigned
+$table->foreign('tenant_id')->references('id')->on('tenants')->cascadeOnDelete();
+$table->foreign('lead_id')->references('id')->on('leads')->nullOnDelete();
 ```
+
+MySQL's DDL isn't transactional, so a migration that fails partway through
+(the table create succeeds, a later `alter table add constraint` doesn't)
+still leaves the table sitting there without being recorded in the
+`migrations` table — `php artisan migrate` on the next attempt sees "nothing
+to run" while `Schema::hasTable(...)` says it already exists. Drop it by
+hand (`Schema::dropIfExists(...)` via tinker) before re-running a fixed
+version, rather than trying to migrate on top of the half-created table.
+
+Check a table's real column type before writing the migration, don't
+assume from the model or from a sibling table:
+```php
+DB::selectOne("SELECT COLUMN_TYPE FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'leads' AND column_name = 'id'");
+```
+
+---
+
+## Package-Owned Scheduled Commands
+
+Two separate steps, in two separate places — don't conflate them:
+
+1. **Making the command exist at all.** This app (Laravel 12, no
+   `app/Console/Kernel.php`) doesn't auto-discover a package's
+   `Console/Commands` directory the way it does the main app's own —
+   without an explicit registration, the class exists on disk but `php
+   artisan list` won't show it and `php artisan your:command` 404s as
+   "command not defined." Register it from the module's own provider,
+   mirroring `Email`'s and `LeadGreen`'s `registerCommands()`:
+   ```php
+   protected function registerCommands(): void
+   {
+       if ($this->app->runningInConsole()) {
+           $this->commands([YourCommand::class]);
+       }
+   }
+   ```
+2. **Actually scheduling it.** Every real scheduled task in this codebase —
+   there is currently exactly one, `inbound-emails:process` — is registered
+   in the root `routes/console.php` via `Schedule::command(...)`, not from
+   inside any package's provider. Follow that, not a per-package
+   `$this->app->booted(fn () => ... Schedule::command(...))` call: this app
+   has never actually used the latter, and scattering schedule
+   registrations across every package's own provider defeats the one
+   thing `routes/console.php` gives you today — one file to read to see
+   everything that runs on a timer.
+   ```php
+   // routes/console.php
+   Schedule::command('your:command')->everyFiveMinutes();
+   ```
 
 ---
 

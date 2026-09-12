@@ -25,6 +25,7 @@ class PbxSettingForm extends FormRequest
     {
         return [
             'enabled' => 'nullable|boolean',
+            'auto_log_activity' => 'nullable|boolean',
             'api_key' => 'nullable|string|max:255',
         ];
     }

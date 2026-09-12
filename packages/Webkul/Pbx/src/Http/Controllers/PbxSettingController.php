@@ -2,6 +2,7 @@
 
 namespace Webkul\Pbx\Http\Controllers;
 
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\View\View;
@@ -81,6 +82,12 @@ class PbxSettingController extends Controller
                     'domain' => $identity['domain_name'] ?? '?',
                 ]),
             ]);
+        } catch (RequestException $e) {
+            return response()->json([
+                'message' => trans('pbx::app.settings.test-failed', [
+                    'error' => PbxClient::errorDetail($e) ?? $e->getMessage(),
+                ]),
+            ], 422);
         } catch (\Throwable $e) {
             return response()->json([
                 'message' => trans('pbx::app.settings.test-failed', ['error' => $e->getMessage()]),

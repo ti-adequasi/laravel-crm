@@ -82,7 +82,7 @@
                         {!! view_render_event('admin.leads.view.person.contact_numbers.before', ['lead' => $lead]) !!}
 
                         @foreach ($lead->person->contact_numbers as $contactNumber)
-                            <div class="flex gap-1">
+                            <div class="flex items-center gap-1">
                                 <a
                                     class="text-brandColor"
                                     href="callto:{{ $contactNumber['value'] }}"
@@ -93,6 +93,15 @@
                                 <span class="text-gray-500 dark:text-gray-300">
                                     ({{ $contactNumber['label'] }})
                                 </span>
+
+                                {{--
+                                    .before/.after around this loop (below) only wrap the
+                                    whole list, not each number — this per-row hook is
+                                    additive on top of that pair for anything that needs
+                                    "next to this one number" (currently: Pbx's
+                                    click-to-call button). No listener means no output.
+                                --}}
+                                {!! view_render_event('admin.leads.view.person.contact_numbers.row', ['lead' => $lead, 'contactNumber' => $contactNumber]) !!}
                             </div>
                         @endforeach
 

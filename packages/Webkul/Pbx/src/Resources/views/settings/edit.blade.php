@@ -17,6 +17,7 @@
         <div class="border-t border-gray-300 px-4 py-2 dark:border-gray-800">
             <v-pbx-settings
                 :enabled="{{ $setting->enabled ? 'true' : 'false' }}"
+                :auto-log-activity="{{ $setting->auto_log_activity ? 'true' : 'false' }}"
                 :has-key="{{ ! empty($setting->api_key) ? 'true' : 'false' }}"
                 update-url="{{ route('admin.pbx.update') }}"
                 test-url="{{ route('admin.pbx.test') }}"
@@ -66,6 +67,28 @@
                         <span class="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:top-0.5 after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-brandColor peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-blue-300 dark:bg-gray-800 dark:after:border-white dark:after:bg-white dark:peer-checked:bg-gray-950 after:ltr:left-0.5 peer-checked:after:ltr:translate-x-full after:rtl:right-0.5 peer-checked:after:rtl:-translate-x-full"></span>
                     </label>
                 </x-admin::form.control-group>
+
+                <x-admin::form.control-group class="!mb-4 flex items-center gap-4">
+                    <x-admin::form.control-group.label class="!mb-0" for="auto_log_activity">
+                        @lang('pbx::app.settings.auto-log-activity')
+                    </x-admin::form.control-group.label>
+
+                    <!-- Same plain-native-checkbox reasoning as #enabled above. -->
+                    <label class="relative inline-flex cursor-pointer items-center">
+                        <input
+                            type="checkbox"
+                            id="auto_log_activity"
+                            class="peer sr-only"
+                            v-model="form.auto_log_activity"
+                        />
+
+                        <span class="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:top-0.5 after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-brandColor peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-blue-300 dark:bg-gray-800 dark:after:border-white dark:after:bg-white dark:peer-checked:bg-gray-950 after:ltr:left-0.5 peer-checked:after:ltr:translate-x-full after:rtl:right-0.5 peer-checked:after:rtl:-translate-x-full"></span>
+                    </label>
+                </x-admin::form.control-group>
+
+                <p class="mb-4 max-w-2xl text-xs text-gray-500 dark:text-gray-300">
+                    @lang('pbx::app.settings.auto-log-activity-hint')
+                </p>
 
                 <x-admin::form.control-group>
                     <x-admin::form.control-group.label for="pbx_api_key">
@@ -125,6 +148,7 @@
 
                 props: [
                     'enabled',
+                    'autoLogActivity',
                     'hasKey',
                     'updateUrl',
                     'testUrl',
@@ -134,6 +158,7 @@
                     return {
                         form: {
                             enabled: this.enabled,
+                            auto_log_activity: this.autoLogActivity,
                             api_key: '',
                         },
                         testing: false,

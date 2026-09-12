@@ -38,6 +38,7 @@ class PbxSetting extends Model implements PbxSettingContract
     protected $fillable = [
         'tenant_id',
         'enabled',
+        'auto_log_activity',
         'api_key',
     ];
 
@@ -48,6 +49,7 @@ class PbxSetting extends Model implements PbxSettingContract
      */
     protected $casts = [
         'enabled' => 'boolean',
+        'auto_log_activity' => 'boolean',
         'api_key' => 'encrypted',
     ];
 

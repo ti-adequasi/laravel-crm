@@ -89,6 +89,29 @@ it('never lets one tenant\'s PbxClient read another tenant\'s api_key, and treat
         ->toThrow(PbxNotConfiguredException::class);
 });
 
+it('defaults auto_log_activity to true for a tenant that has never saved settings', function () {
+    $tenant = app(TenantRepository::class)->create(['name' => 'Pbx Default Toggle Tenant', 'code' => 'pbx-default-toggle-'.uniqid(), 'is_active' => true]);
+    $user = makePbxTestTenantUser($tenant->id);
+
+    test()->actingAs($user)
+        ->get(route('admin.pbx.edit'))
+        ->assertOk()
+        ->assertSee(':auto-log-activity="true"', false);
+});
+
+it('can turn auto_log_activity off and persists that choice', function () {
+    $tenant = app(TenantRepository::class)->create(['name' => 'Pbx Toggle Off Tenant', 'code' => 'pbx-toggle-off-'.uniqid(), 'is_active' => true]);
+    $user = makePbxTestTenantUser($tenant->id);
+
+    test()->actingAs($user)
+        ->put(route('admin.pbx.update'), ['enabled' => true, 'auto_log_activity' => false, 'api_key' => 'sk-toggle-off-key'])
+        ->assertOk();
+
+    $setting = PbxSetting::withoutGlobalScopes()->where('tenant_id', $tenant->id)->first();
+
+    expect($setting->auto_log_activity)->toBeFalse();
+});
+
 it('refuses to test a connection with no key available at all', function () {
     $tenant = app(TenantRepository::class)->create(['name' => 'Pbx No Key Tenant', 'code' => 'pbx-no-key-'.uniqid(), 'is_active' => true]);
     $user = makePbxTestTenantUser($tenant->id);
