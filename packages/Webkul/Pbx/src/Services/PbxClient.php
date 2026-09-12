@@ -107,6 +107,30 @@ class PbxClient
     }
 
     /**
+     * One CDR entry's full detail — Call schema, fully typed (unlike the
+     * dialer endpoints): xml_cdr_uuid, direction, caller_id_name/number,
+     * source_number, destination_number, start/answer/end_stamp, duration,
+     * billsec, billminutes, answered, missed_call, hangup_cause,
+     * accountcode, extension_uuid, has_recording, recording_url.
+     */
+    public function call(string $xmlCdrUuid): array
+    {
+        return $this->client()->get("/v1/calls/{$xmlCdrUuid}")->throw()->json();
+    }
+
+    /**
+     * A short-lived, unauthenticated URL for playing back one call's
+     * recording directly in an <audio> tag — the response shape isn't in
+     * the OpenAPI spec (declared untyped, same as the dialer endpoints),
+     * so PbxCallHistoryController reads it defensively rather than
+     * assuming a field name.
+     */
+    public function recordingSignedUrl(string $xmlCdrUuid): array
+    {
+        return $this->client()->get("/v1/calls/{$xmlCdrUuid}/recording/signed-url")->throw()->json();
+    }
+
+    /**
      * A clean, human-readable message from one of the PBX's own error
      * response shapes, or null if the response isn't shaped like either
      * one — checked directly against the live PBX, not assumed: GET

@@ -108,6 +108,24 @@
             <!-- Activities -->
             {!! view_render_event('admin.leads.view.activities.before', ['lead' => $lead]) !!}
 
+            @php
+                // The Pbx package's own live call-history panel — only a
+                // tab worth showing (and only worth fetching PBX data for)
+                // when there's actually a Person with phone numbers to
+                // look up, and when the acting user is allowed to use PBX
+                // features at all (same 'leads.calls' permission the
+                // click-to-call button on this same page already gates
+                // on). extra-types has no hook of its own to append to
+                // from outside this file (it's a plain PHP literal, not
+                // filtered through any view_render_event) — this is the
+                // same kind of small, direct, justified core edit as the
+                // one-line addition in leads/view/person.blade.php, for
+                // the same underlying reason.
+                $pbxCallHistoryExtraType = ($lead?->person && bouncer()->hasPermission('leads.calls'))
+                    ? [['name' => 'pbx_call_history', 'label' => trans('admin::app.leads.view.tabs.pbx-call-history')]]
+                    : [];
+            @endphp
+
             <x-admin::activities
                 :endpoint="route('admin.leads.activities.index', $lead->id)"
                 :email-detach-endpoint="route('admin.leads.emails.detach', $lead->id)"
@@ -116,6 +134,7 @@
                     ['name' => 'description', 'label' => trans('admin::app.leads.view.tabs.description')],
                     ['name' => 'products', 'label' => trans('admin::app.leads.view.tabs.products')],
                     ['name' => 'quotes', 'label' => trans('admin::app.leads.view.tabs.quotes')],
+                    ...$pbxCallHistoryExtraType,
                 ]"
             >
                 <!-- Products -->
@@ -134,6 +153,13 @@
                         {{ $lead->description }}
                     </div>
                 </x-slot>
+
+                @if ($lead?->person && bouncer()->hasPermission('leads.calls'))
+                    <!-- Pbx call history -->
+                    <x-slot:pbx_call_history>
+                        @include ('pbx::partials.call-history-panel', ['personId' => $lead->person->id])
+                    </x-slot>
+                @endif
             </x-admin::activities>
 
             {!! view_render_event('admin.leads.view.activities.after', ['lead' => $lead]) !!}

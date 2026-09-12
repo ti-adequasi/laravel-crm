@@ -1968,6 +1968,7 @@ return [
                 'description' => '설명',
                 'products' => '제품',
                 'quotes' => '견적서',
+                'pbx-call-history' => '통화 기록',
             ],
             'attributes' => [
                 'title' => '리드 정보',

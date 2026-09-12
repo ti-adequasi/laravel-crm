@@ -565,6 +565,27 @@ to that shape:
   workaround either (a custom element string inserted into already-mounted
   DOM via raw `innerHTML` after the fact is never compiled/hydrated by
   Vue — it just sits there inert).
+- **The `<x-admin::activities>` tab bar (Lead/Person/Product/Warehouse
+  "view" pages) has no hook for adding a whole new tab from outside.**
+  Its default 9 type-tabs (Notas/Chamadas/Reuniões/...) are a hardcoded JS
+  prop default inside `components/activities/index.blade.php`, but a page
+  can add its own via the `:extra-types="[...]"` prop plus a matching
+  `<x-slot:name>` — see `leads/view.blade.php`'s `description`/`products`/
+  `quotes` entries. That array, though, is a plain PHP literal assembled
+  in the *page's own* file (`leads/view.blade.php`), not filtered through
+  any `view_render_event` — a package can't append to it from its own
+  provider. The `.content.types.before`/`.after` and
+  `.content.activity.extra_types.before`/`.after` hooks this component
+  does expose only wrap markup around the existing tab loop and carry no
+  entity context (`$lead` isn't passed — this same component is shared by
+  four unrelated pages), so they can't add an entry to the array either.
+  Adding a tab therefore needs the same kind of small, justified core edit
+  as the `contact_numbers.row` case above: one array entry + one
+  `<x-slot:name>` in `leads/view.blade.php`, guarded by whatever condition
+  decides the tab should exist (e.g. `$lead?->person` for a Person-scoped
+  feature), with the slot's own content deferred to a one-line
+  `@include('your_package::partials.your-panel', [...])` so the actual
+  new code stays in your own package almost entirely.
 
 **4. `vendor:publish` view override — replaces a whole core view, not just a
 point inside it.** Ship a same-path replacement under your package's

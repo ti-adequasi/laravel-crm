@@ -1968,6 +1968,7 @@ return [
                 'description' => '描述',
                 'products' => '产品',
                 'quotes' => '报价单',
+                'pbx-call-history' => '通话记录',
             ],
             'attributes' => [
                 'title' => '线索信息',

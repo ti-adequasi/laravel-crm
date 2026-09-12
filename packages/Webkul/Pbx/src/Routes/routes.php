@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Webkul\Pbx\Http\Controllers\PbxCallController;
+use Webkul\Pbx\Http\Controllers\PbxCallHistoryController;
 use Webkul\Pbx\Http\Controllers\PbxSettingController;
 
 // 'tenant' before 'user' (really Bouncer, not Laravel's auth middleware) —
@@ -24,5 +25,12 @@ Route::middleware(['web', 'admin_locale', 'tenant', 'user'])
             Route::post('', 'originate')->name('admin.pbx.calls.originate');
             Route::get('{callUuid}/status', 'status')->name('admin.pbx.calls.status');
             Route::delete('{callUuid}', 'hangup')->name('admin.pbx.calls.hangup');
+        });
+
+        // Own prefix (not nested under pbx/calls) — a live PBX CDR proxy,
+        // unrelated to the pbx_calls table the routes above track.
+        Route::controller(PbxCallHistoryController::class)->prefix('pbx/history')->group(function () {
+            Route::get('', 'index')->name('admin.pbx.history.index');
+            Route::get('{xmlCdrUuid}/recording-url', 'recordingUrl')->name('admin.pbx.history.recording-url');
         });
     });

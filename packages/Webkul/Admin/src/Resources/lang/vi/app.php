@@ -1968,6 +1968,7 @@ return [
                 'description' => 'Mô Tả',
                 'products' => 'Sản Phẩm',
                 'quotes' => 'Báo Giá',
+                'pbx-call-history' => 'Lịch Sử Cuộc Gọi',
             ],
             'attributes' => [
                 'title' => 'Về Khách Hàng Tiềm Năng',

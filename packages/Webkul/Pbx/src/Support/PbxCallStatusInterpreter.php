@@ -103,6 +103,24 @@ class PbxCallStatusInterpreter
     }
 
     /**
+     * Best-effort extraction of the actual URL from
+     * GET /v1/calls/{uuid}/recording/signed-url's response — also declared
+     * untyped in the OpenAPI spec, same reasoning as extractCallUuid().
+     */
+    public static function extractSignedUrl(array $signedUrlResponse): ?string
+    {
+        foreach (['url', 'signed_url', 'recording_url'] as $key) {
+            $value = $signedUrlResponse[$key] ?? null;
+
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Best-effort call duration in seconds, if the response happens to
      * carry one under a recognizable key — used only to enrich the
      * auto-logged Activity's `additional` payload, never anything

@@ -1968,6 +1968,7 @@ return [
                 'description' => 'الوصف',
                 'products' => 'المنتجات',
                 'quotes' => 'الاقتباسات',
+                'pbx-call-history' => 'سجل المكالمات',
             ],
             'attributes' => [
                 'title' => 'حول الفرصة',

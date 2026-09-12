@@ -1970,6 +1970,7 @@ return [
                 'description' => 'Description',
                 'products' => 'Products',
                 'quotes' => 'Quotes',
+                'pbx-call-history' => 'Call History',
             ],
             'attributes' => [
                 'title' => 'About Lead',

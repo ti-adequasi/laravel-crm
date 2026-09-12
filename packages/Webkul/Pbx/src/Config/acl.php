@@ -17,7 +17,15 @@ return [
         // a Lead doesn't necessarily place calls on the tenant's PBX.
         'key' => 'leads.calls',
         'name' => 'pbx::app.acl.calls-title',
-        'route' => ['admin.pbx.calls.originate', 'admin.pbx.calls.status', 'admin.pbx.calls.hangup'],
+        'route' => [
+            'admin.pbx.calls.originate', 'admin.pbx.calls.status', 'admin.pbx.calls.hangup',
+            // Bundled here rather than under a separate permission: seeing
+            // what's already happened on this tenant's PBX and being able
+            // to place a new call are treated as one "PBX access" grant,
+            // not two — no strong signal from the plan that a user should
+            // ever have one without the other.
+            'admin.pbx.history.index', 'admin.pbx.history.recording-url',
+        ],
         'sort' => 5,
     ],
 ];

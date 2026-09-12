@@ -1968,6 +1968,7 @@ return [
                 'description' => 'Açıklama',
                 'products' => 'Ürünler',
                 'quotes' => 'Teklifler',
+                'pbx-call-history' => 'Arama Geçmişi',
             ],
             'attributes' => [
                 'title' => 'Lead Hakkında',
