@@ -15,6 +15,7 @@ use Webkul\Admin\Http\Requests\MassDestroyRequest;
 use Webkul\Admin\Http\Requests\MassUpdateRequest;
 use Webkul\Admin\Http\Resources\UserResource;
 use Webkul\Admin\Notifications\User\Create as UserCreatedNotification;
+use Webkul\Pbx\Services\PbxClient;
 use Webkul\User\Contracts\User;
 use Webkul\User\Repositories\GroupRepository;
 use Webkul\User\Repositories\RoleRepository;
@@ -30,8 +31,36 @@ class UserController extends Controller
     public function __construct(
         protected UserRepository $userRepository,
         protected GroupRepository $groupRepository,
-        protected RoleRepository $roleRepository
+        protected RoleRepository $roleRepository,
+        protected PbxClient $pbxClient,
     ) {}
+
+    /**
+     * Confirms a typed extension actually exists in the tenant's own PBX
+     * user directory — only when the PBX is configured for this tenant at
+     * all; there's nothing to validate against otherwise, and a typo
+     * caught here beats one only discovered later trying to place a call.
+     * A PBX outage while saving doesn't block the save — the extension
+     * can still be corrected once the PBX is reachable again.
+     */
+    protected function validateExtensionAgainstPbx(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (empty($value) || ! $this->pbxClient->isConfigured()) {
+            return;
+        }
+
+        try {
+            $users = $this->pbxClient->users();
+        } catch (\Throwable $e) {
+            return;
+        }
+
+        $validExtensions = collect($users['items'] ?? [])->pluck('extension')->filter()->all();
+
+        if (! in_array($value, $validExtensions, true)) {
+            $fail(trans('admin::app.settings.users.index.invalid-extension'));
+        }
+    }
 
     /**
      * Display a listing of the resource.
@@ -90,6 +119,7 @@ class UserController extends Controller
             'view_permission' => 'string|in:global,group,individual',
             'groups' => 'required_if:view_permission,group|array',
             'groups.*' => 'integer|exists:groups,id',
+            'extension' => ['nullable', 'string', 'max:20', $this->validateExtensionAgainstPbx(...)],
         ]);
 
         /**
@@ -108,7 +138,7 @@ class UserController extends Controller
          * Build the payload from the validated data only; never mass-assign the raw request.
          */
         $data = Arr::only($validated, [
-            'name', 'email', 'password', 'role_id', 'status', 'view_permission', 'groups',
+            'name', 'email', 'password', 'role_id', 'status', 'view_permission', 'groups', 'extension',
         ]);
 
         if (! empty($data['password'])) {
@@ -198,6 +228,7 @@ class UserController extends Controller
             'view_permission' => 'required|string|in:global,group,individual',
             'groups' => 'required_if:view_permission,group|array',
             'groups.*' => 'integer|exists:groups,id',
+            'extension' => ['nullable', 'string', 'max:20', $this->validateExtensionAgainstPbx(...)],
         ]);
 
         /**
@@ -226,8 +257,8 @@ class UserController extends Controller
          * role, data scope, status and groups — all already constrained above to their own level.
          */
         $data = Arr::only($validated, ($isAdministrator || ! $isSelf)
-            ? ['name', 'email', 'password', 'role_id', 'status', 'view_permission', 'groups']
-            : ['name', 'email', 'password']
+            ? ['name', 'email', 'password', 'role_id', 'status', 'view_permission', 'groups', 'extension']
+            : ['name', 'email', 'password', 'extension']
         );
 
         if (empty($data['password'])) {

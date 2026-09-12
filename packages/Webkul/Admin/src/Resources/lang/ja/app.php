@@ -1141,6 +1141,8 @@ return [
                 'delete-failed' => 'ユーザーを削除できません。',
                 'delete-success' => 'ユーザーを削除しました。',
                 'last-delete-error' => '少なくとも1人のユーザーが必要です。',
+                'extension' => 'Extension',
+                'invalid-extension' => 'This extension was not found in the PBX for your tenant.',
                 'mass-delete-failed' => 'ユーザーを削除できません。',
                 'mass-delete-success' => 'ユーザーを削除しました。',
                 'mass-update-failed' => 'ユーザーを更新できません。',

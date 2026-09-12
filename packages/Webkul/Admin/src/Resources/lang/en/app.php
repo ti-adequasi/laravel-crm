@@ -1142,6 +1142,8 @@ return [
                 'delete-failed' => 'User can not be deleted.',
                 'delete-success' => 'User deleted successfully.',
                 'last-delete-error' => 'At least one user is required.',
+                'extension' => 'Extension',
+                'invalid-extension' => 'This extension was not found in the PBX for your tenant.',
                 'mass-delete-failed' => 'Users can not be deleted.',
                 'mass-delete-success' => 'Users deleted successfully.',
                 'mass-update-failed' => 'Users can not be updated.',

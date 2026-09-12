@@ -1140,6 +1140,8 @@ return [
                 'delete-failed' => 'No se puede eliminar el Usuario.',
                 'delete-success' => 'Usuario eliminado exitosamente.',
                 'last-delete-error' => 'Se requiere al menos un usuario.',
+                'extension' => 'Extension',
+                'invalid-extension' => 'This extension was not found in the PBX for your tenant.',
                 'mass-delete-failed' => 'No se pueden eliminar los Usuarios.',
                 'mass-delete-success' => 'Usuarios eliminados exitosamente.',
                 'mass-update-failed' => 'No se pueden actualizar los Usuarios.',

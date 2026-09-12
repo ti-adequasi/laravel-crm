@@ -1140,6 +1140,8 @@ return [
                 'delete-failed' => '사용자를 삭제할 수 없습니다.',
                 'delete-success' => '사용자가 삭제되었습니다.',
                 'last-delete-error' => '사용자가 최소 한 명 이상 필요합니다.',
+                'extension' => 'Extension',
+                'invalid-extension' => 'This extension was not found in the PBX for your tenant.',
                 'mass-delete-failed' => '사용자를 삭제할 수 없습니다.',
                 'mass-delete-success' => '사용자가 삭제되었습니다.',
                 'mass-update-failed' => '사용자를 수정할 수 없습니다.',

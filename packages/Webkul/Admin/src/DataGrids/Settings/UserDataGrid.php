@@ -31,6 +31,7 @@ class UserDataGrid extends DataGrid
                 'users.email',
                 'users.image',
                 'users.status',
+                'users.extension',
                 'users.created_at',
                 DB::raw('GROUP_CONCAT(DISTINCT '.$tablePrefix.'groups.name ORDER BY '.$tablePrefix.'groups.name SEPARATOR \', \') as group_name')
             )
@@ -95,6 +96,15 @@ class UserDataGrid extends DataGrid
         $this->addColumn([
             'index' => 'email',
             'label' => trans('admin::app.settings.users.index.datagrid.email'),
+            'type' => 'string',
+            'sortable' => true,
+            'searchable' => true,
+            'filterable' => true,
+        ]);
+
+        $this->addColumn([
+            'index' => 'extension',
+            'label' => trans('admin::app.settings.users.index.extension'),
             'type' => 'string',
             'sortable' => true,
             'searchable' => true,

@@ -1140,6 +1140,8 @@ return [
                 'delete-failed' => 'Người dùng không thể bị xóa.',
                 'delete-success' => 'Người dùng đã được xóa thành công.',
                 'last-delete-error' => 'Cần ít nhất một người dùng.',
+                'extension' => 'Extension',
+                'invalid-extension' => 'This extension was not found in the PBX for your tenant.',
                 'mass-delete-failed' => 'Người dùng không thể bị xóa.',
                 'mass-delete-success' => 'Người dùng đã được xóa thành công.',
                 'mass-update-failed' => 'Người dùng không thể được cập nhật.',

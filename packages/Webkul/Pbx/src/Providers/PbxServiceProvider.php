@@ -2,7 +2,9 @@
 
 namespace Webkul\Pbx\Providers;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Webkul\Core\ViewRenderEventManager;
 
 class PbxServiceProvider extends ServiceProvider
 {
@@ -20,6 +22,13 @@ class PbxServiceProvider extends ServiceProvider
         $this->loadTranslationsFrom(__DIR__.'/../Resources/lang', 'pbx');
 
         $this->app->register(ModuleServiceProvider::class);
+
+        // Injects the "Ramal" field into the existing Users create/edit
+        // modal — no edit to that core Blade file needed, since every
+        // field there is already individually hook-wrapped.
+        Event::listen('admin.settings.users.index.form.status.after', function (ViewRenderEventManager $manager) {
+            $manager->addTemplate('pbx::partials.user-extension-field');
+        });
     }
 
     /**

@@ -1140,6 +1140,8 @@ return [
                 'delete-failed' => 'کاربر قابل حذف نیست.',
                 'delete-success' => 'کاربر با موفقیت حذف شد.',
                 'last-delete-error' => 'حداقل یک کاربر لازم است.',
+                'extension' => 'Extension',
+                'invalid-extension' => 'This extension was not found in the PBX for your tenant.',
                 'mass-delete-failed' => 'کاربران قابل حذف نیستند.',
                 'mass-delete-success' => 'کاربران با موفقیت حذف شدند.',
                 'mass-update-failed' => 'کاربران قابل به‌روزرسانی نیستند.',
