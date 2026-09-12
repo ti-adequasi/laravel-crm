@@ -9,6 +9,7 @@ use Webklex\PHPIMAP\Attachment as ImapAttachment;
 use Webkul\Core\Eloquent\Repository;
 use Webkul\Email\Contracts\Attachment;
 use Webkul\Email\Contracts\Email;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class AttachmentRepository extends Repository
 {
@@ -88,7 +89,7 @@ class AttachmentRepository extends Repository
             $content = $attachment->content;
         }
 
-        $path = 'emails/'.$email->id.'/'.Str::random(40);
+        $path = CurrentTenant::scopedStoragePath('emails/'.$email->id.'/'.Str::random(40));
 
         Storage::disk(self::DISK)->put($path, $content);
 

@@ -12,6 +12,7 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Repositories\ImportRepository;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class ImportController extends Controller
 {
@@ -85,7 +86,7 @@ class ImportController extends Controller
             array_merge(
                 [
                     'file_path' => request()->file('file')->storeAs(
-                        'imports',
+                        CurrentTenant::scopedStoragePath('imports'),
                         time().'-'.request()->file('file')->getClientOriginalName(),
                         'public'
                     ),
@@ -160,7 +161,7 @@ class ImportController extends Controller
             Storage::disk('public')->delete($import->file_path);
 
             $data['file_path'] = request()->file('file')->storeAs(
-                'imports',
+                CurrentTenant::scopedStoragePath('imports'),
                 time().'-'.request()->file('file')->getClientOriginalName(),
                 'public'
             );

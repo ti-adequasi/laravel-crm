@@ -4,6 +4,7 @@ namespace Webkul\Activity\Repositories;
 
 use Webkul\Activity\Contracts\Activity;
 use Webkul\Core\Eloquent\Repository;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class ActivityRepository extends Repository
 {
@@ -29,7 +30,7 @@ class ActivityRepository extends Repository
         if (isset($data['file'])) {
             app(FileRepository::class)->create([
                 'name' => $data['name'] ?? $data['file']->getClientOriginalName(),
-                'path' => $data['file']->store('activities/'.$activity->id),
+                'path' => $data['file']->store(CurrentTenant::scopedStoragePath('activities/'.$activity->id)),
                 'activity_id' => $activity->id,
             ]);
         }

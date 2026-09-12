@@ -149,7 +149,7 @@ class CoreConfigRepository extends Repository
                         if (request()->hasFile($fieldNameWithKey)) {
                             $uploadedFile = request()->file($fieldNameWithKey);
 
-                            $val = $uploadedFile->store('configuration');
+                            $val = $uploadedFile->store(CurrentTenant::scopedStoragePath('configuration'));
 
                             /**
                              * Nested configuration fields accept uploads on the same terms as the
@@ -185,7 +185,7 @@ class CoreConfigRepository extends Repository
 
                         $filename = md5($file->getClientOriginalName().time()).'.'.$file->getClientOriginalExtension();
 
-                        $path = $file->storeAs('configuration', $filename);
+                        $path = $file->storeAs(CurrentTenant::scopedStoragePath('configuration'), $filename);
 
                         $this->sanitizeSVG($path, $file);
                     }

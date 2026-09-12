@@ -88,6 +88,31 @@ class CurrentTenant
     }
 
     /**
+     * Prefix a storage path with the current tenant's own subtree
+     * (tenants/{id}/...), or leave it unprefixed for a super-admin (no
+     * tenant bound) — matching every file's existing, un-prefixed shape
+     * exactly, so nothing already on disk needs to move and no read-side
+     * fallback is needed: each row's own stored path is self-describing
+     * regardless of which shape it has (see Phase 2.4).
+     *
+     * This is collision-avoidance and obscurity, not real access control
+     * — most disks this touches are Laravel's `public` disk, symlinked
+     * straight into the webroot, so an unguessable path is still directly
+     * fetchable by anyone who guesses or enumerates it. Real protection
+     * for a given upload also needs its model to carry BelongsToTenant
+     * (so a scoped find() 404s a cross-tenant id before a path is even
+     * read back) or, for the one write site whose model deliberately
+     * doesn't (core_config, see Phase 2.3), an explicit tenant_id check
+     * in the controller that serves it back.
+     */
+    public static function scopedStoragePath(string $path): string
+    {
+        $tenantId = static::id();
+
+        return $tenantId === null ? $path : "tenants/{$tenantId}/{$path}";
+    }
+
+    /**
      * Run a callback once per active tenant, plus once more scoped to
      * tenant_id IS NULL (data predating multi-tenancy, or anything a
      * super-admin owns directly — see runAsNullTenant()). The shape a

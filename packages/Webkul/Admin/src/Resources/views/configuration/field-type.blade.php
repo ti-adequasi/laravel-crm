@@ -264,7 +264,7 @@
             <template v-if="field.type == 'file' && field.is_visible">
                 <a
                     v-if="value"
-                    :href="'{{ route('admin.configuration.download', [request()->route('slug'), request()->route('slug2'), ':id']) }}'.replace(':id', value.split('/')[1])"
+                    :href="'{{ route('admin.configuration.download', [request()->route('slug'), request()->route('slug2'), ':id']) }}'.replace(':id', value.split('/').pop())"
                 >
                     <div class="mb-1 inline-flex w-full max-w-max cursor-pointer appearance-none items-center justify-between gap-x-1 rounded-md border border-transparent p-1.5 text-center text-gray-600 transition-all marker:shadow hover:bg-gray-200 active:border-gray-300 dark:text-gray-300 dark:hover:bg-gray-800">
                         <i class="icon-stats-down text-2xl"></i>

@@ -19,6 +19,7 @@ use Webkul\DataTransfer\Helpers\Sources\CSV as CSVSource;
 use Webkul\DataTransfer\Helpers\Sources\Excel as ExcelSource;
 use Webkul\DataTransfer\Repositories\ImportBatchRepository;
 use Webkul\DataTransfer\Repositories\ImportRepository;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class Import
 {
@@ -568,7 +569,7 @@ class Import
                 throw new \InvalidArgumentException("Unsupported file type: $fileType");
         }
 
-        $errorFilePath = 'imports/'.time().'-error-report.'.$fileType;
+        $errorFilePath = CurrentTenant::scopedStoragePath('imports').'/'.time().'-error-report.'.$fileType;
 
         $writer->save(Storage::disk('public')->path($errorFilePath));
 

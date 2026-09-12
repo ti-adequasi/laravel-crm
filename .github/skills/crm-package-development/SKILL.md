@@ -228,6 +228,33 @@ new scheduled command that needs "every tenant, including the unassigned
 bucket" should go through `eachActiveTenant()` rather than hand-rolling
 its own loop over tenant ids plus a bare `null` pass.
 
+**A new file upload needs `CurrentTenant::scopedStoragePath()`, and it
+alone usually isn't enough.** Auditing this codebase for Phase 2.4 found
+11 real `Storage::`/`->store()`/`->storeAs()` write sites across 9
+packages — more than the obvious 3-4 — covering activity attachments,
+avatars, every custom file/image attribute (shared by Lead, Contact,
+Product, Quote, Warehouse, LeadGreen), `core_config` file fields,
+TinyMCE inline images, email attachments, and data-transfer imports
+(source file and error report). Any new one needs the same wrap:
+`$file->store(CurrentTenant::scopedStoragePath('some/prefix'))` —
+`tenants/{id}/some/prefix` for a bound tenant, `some/prefix` unchanged
+for a super-admin, so nothing already on disk needs to move and no
+read-side fallback is needed (each row's own stored path is
+self-describing regardless of which shape it has). But the path prefix
+by itself is obscurity, not access control, on the several of these that
+live on the **public** disk (symlinked into the webroot) — real
+protection is the *owning model* already carrying `BelongsToTenant`, so
+a scoped `find()`/`findOrFail()` 404s a cross-tenant id before its
+stored path is ever read back (true for every site above except
+`core_config`, which deliberately has no such scope — Phase 2.3's global-
+default fallback needs the opposite of a filter — so its one download
+endpoint, `ConfigurationController::download()`, checks
+`CurrentTenant::id()` against the resolved row's `tenant_id` explicitly
+instead). Don't assume path-prefixing alone closes the gap: check
+whether the model backing a new upload actually has the trait, and if it
+doesn't, add an explicit tenant check to whatever serves it back, the
+same way.
+
 ---
 
 ## Scaffolding With `krayin-package-generator`

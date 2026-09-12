@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Core\Traits\Sanitizer;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class TinyMCEController extends Controller
 {
@@ -64,7 +65,7 @@ class TinyMCEController extends Controller
 
         $filename = md5($file->getClientOriginalName().time()).'.'.$extension;
 
-        $path = $file->storeAs($this->storagePath, $filename);
+        $path = $file->storeAs(CurrentTenant::scopedStoragePath($this->storagePath), $filename);
 
         $this->sanitizeSVG($path, $file);
 

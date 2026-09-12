@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
+use Webkul\Tenant\Support\CurrentTenant;
 
 class AccountController extends Controller
 {
@@ -72,7 +73,7 @@ class AccountController extends Controller
         }
 
         if (request()->hasFile('image')) {
-            $data['image'] = current(request()->file('image'))->store('admins/'.$user->id);
+            $data['image'] = current(request()->file('image'))->store(CurrentTenant::scopedStoragePath('admins/'.$user->id));
         } else {
             if (! isset($data['image'])) {
                 if (! empty($data['image'])) {
