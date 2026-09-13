@@ -90,6 +90,12 @@ class LeadForm extends FormRequest
                         $attribute->code.'.*.value' => [$attribute->is_required ? 'required' : 'nullable'],
                         $attribute->code.'.*.label' => $attribute->is_required ? 'required' : 'nullable',
                     ];
+
+                    // Same mechanism as AttributeForm's identical branch —
+                    // see its own comment for why this was previously dead.
+                    if ($attribute->validation) {
+                        array_push($validations[$attribute->code.'.*.value'], $attribute->validation);
+                    }
                 } else {
                     $validations[$attribute->code] = [$attribute->is_required ? 'required' : 'nullable'];
 
@@ -147,6 +153,7 @@ class LeadForm extends FormRequest
             'products.*.name.required_with' => trans('admin::app.leads.product-name-required'),
             'products.*.price.required_with' => trans('admin::app.leads.product-price-required'),
             'products.*.quantity.required_with' => trans('admin::app.leads.product-quantity-required'),
+            'person.contact_numbers.*.value.regex' => trans('admin::app.validations.message.phone-format'),
         ];
     }
 }

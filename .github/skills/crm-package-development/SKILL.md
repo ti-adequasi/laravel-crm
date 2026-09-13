@@ -720,6 +720,53 @@ data on it.
 
 ---
 
+## `Attribute` Needs Tenant-*Or*-Global Scoping, Not Plain `BelongsToTenant`
+
+Found the hard way: every seeded attribute (Person's `contact_numbers`,
+`emails`, everything the table above inserts) has `tenant_id` NULL — they're
+system-wide field *definitions*, not per-tenant data. `Attribute` originally
+picked up a plain `BelongsToTenant` in the same bulk multi-tenancy retrofit
+that added `tenant_id` to ~41 other tables — correct for tables holding
+actual tenant-owned rows, but for this one it meant a genuinely tenant-bound
+request (any real, non-super-admin user — not a console context, not a
+super-admin session with no tenant bound) saw **zero attributes at all**,
+for every entity type: `BelongsToTenant`'s scope filters to exactly the
+bound tenant_id with no fallback to NULL rows (see its own docblock — that's
+deliberate and correct for something like `pbx_settings`, where a fallback
+would leak another tenant's PBX key). The effect is silent, not a hard
+error: `AttributeForm`/`LeadForm`'s rule-building loop just finds nothing to
+iterate, so every entity's `name`, `email`, `phone`-type, `text`-with-a-
+regex, `is_unique`, etc. field-level validation quietly stopped applying at
+all, for every tenant-bound user, while saves kept succeeding. Not caught
+earlier because every test touching Person/Lead/Product creation went
+through the repository directly (`PersonRepository::create()`,
+`LeadRepository::create()`, ...), never through the actual HTTP controllers
+and their FormRequests — the one path that actually queries `Attribute` by
+name.
+
+Fixed with a second scope/trait pair living alongside `TenantScope`/
+`BelongsToTenant` (`packages/Webkul/Tenant/src/Scopes/TenantOrGlobalScope.php`,
+`.../Traits/BelongsToTenantOrGlobal.php`): same auto-stamp-on-create, but
+the read side is `WHERE tenant_id = current OR tenant_id IS NULL` instead of
+just the former — a bound tenant sees its own rows (a tenant-specific custom
+attribute it added itself) *plus* every shared global one, rather than only
+one or the other. `Attribute` now uses this instead of `BelongsToTenant`.
+Reach for the same pair for any *other* table that turns out to hold shared
+system-wide definitions rather than per-tenant data — the tell is the same
+one that exposed this: check `SELECT COUNT(*) FROM <table> WHERE tenant_id
+IS NOT NULL` before assuming plain `BelongsToTenant` fallback-free scoping
+is correct for a table someone else already added `tenant_id` to; a plain
+`BelongsToTenant` on a system-wide table is a *worse* silent failure than
+getting scoping wrong on real tenant data, since nothing errors and nothing
+looks broken — features just quietly stop enforcing anything.
+
+Test this kind of gap by actually hitting the real HTTP endpoint under an
+`actingAs()` user whose tenant is bound to something other than null — a
+repository-direct test proves the repository works, not that a real
+tenant-bound request reaches it at all.
+
+---
+
 ## Making a New Model Use Krayin's Custom Attributes (EAV)
 
 The section above assumes your entity already participates in the attribute

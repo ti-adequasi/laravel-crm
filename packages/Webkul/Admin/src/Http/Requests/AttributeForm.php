@@ -81,6 +81,17 @@ class AttributeForm extends FormRequest
                     $attribute->code.'.*.value' => [$attribute->is_required ? 'required' : 'nullable'],
                     $attribute->code.'.*.label' => $attribute->is_required ? 'required' : 'nullable',
                 ];
+
+                // Same mechanism the 'text' branch below already has for
+                // $attribute->validation — a phone-type attribute can
+                // likewise declare its own extra rule (e.g. a regex), left
+                // completely unused until now: the `contact_numbers`
+                // attribute has always been seeded with 'validation' =>
+                // 'numeric', silently ignored, since this branch never
+                // read the column at all.
+                if ($attribute->validation) {
+                    array_push($validations[$attribute->code.'.*.value'], $attribute->validation);
+                }
             } else {
                 $validations[$attribute->code] = [$attribute->is_required ? 'required' : 'nullable'];
 
@@ -116,5 +127,15 @@ class AttributeForm extends FormRequest
         }
 
         return $this->rules;
+    }
+
+    /**
+     * Get the validation messages that apply to the request.
+     */
+    public function messages(): array
+    {
+        return [
+            'contact_numbers.*.value.regex' => trans('admin::app.validations.message.phone-format'),
+        ];
     }
 }

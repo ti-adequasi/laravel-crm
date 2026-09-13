@@ -2428,6 +2428,7 @@ return [
         'message' => [
             'code' => 'Trường phải là một mã hợp lệ.',
             'decimal' => 'The :attribute must be a decimal.',
+            'phone-format' => 'Nhập số điện thoại kèm số 0 ở đầu và mã vùng, ví dụ: 011987654321 hoặc 01132654321.',
         ],
     ],
     'errors' => [

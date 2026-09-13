@@ -2428,6 +2428,7 @@ return [
         'message' => [
             'code' => 'El campo debe ser un código válido.',
             'decimal' => 'El :attribute debe ser un número decimal.',
+            'phone-format' => 'Ingrese el número con un 0 al inicio y el código de área, por ejemplo 011987654321 o 01132654321.',
         ],
     ],
     'errors' => [

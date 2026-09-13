@@ -2428,6 +2428,7 @@ return [
         'message' => [
             'code' => 'O campo deve ser um código válido.',
             'decimal' => 'The :attribute must be a decimal.',
+            'phone-format' => 'Digite o número com o 0 na frente e o DDD, por exemplo 011987654321 ou 01132654321.',
         ],
     ],
     'errors' => [

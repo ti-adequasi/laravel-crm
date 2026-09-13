@@ -2428,6 +2428,7 @@ return [
         'message' => [
             'code' => 'Alan geçerli bir kod olmalıdır.',
             'decimal' => ':attribute ondalıklı bir sayı olmalıdır.',
+            'phone-format' => 'Numarayı başında 0 ve alan koduyla birlikte girin, örnek: 011987654321 veya 01132654321.',
         ],
     ],
     'errors' => [

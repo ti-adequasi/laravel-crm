@@ -2430,6 +2430,7 @@ return [
         'message' => [
             'code' => 'The field must be a valid code.',
             'decimal' => 'The :attribute must be a decimal.',
+            'phone-format' => 'Enter the number with a leading 0 and area code, e.g. 011987654321 or 01132654321.',
         ],
     ],
     'errors' => [
