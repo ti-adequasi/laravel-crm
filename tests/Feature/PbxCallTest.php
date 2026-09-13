@@ -163,7 +163,7 @@ it('originates a call and persists it with the PBX-assigned call_uuid', function
         ->and($call->lead_id)->toBe($lead->id)
         ->and($call->person_id)->toBe($lead->person->id)
         ->and($call->ramal)->toBe('2002')
-        ->and($call->telefone)->toBe('11987654321')
+        ->and($call->telefone)->toBe('011987654321')
         ->and($call->telefone_raw)->toBe('(11) 98765-4321')
         ->and($call->direction)->toBe('outbound')
         ->and($call->hasEnded())->toBeFalse();

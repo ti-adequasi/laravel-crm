@@ -37,3 +37,17 @@ it('rejects null input', function () {
     expect(fn () => PhoneNumberNormalizer::normalize(null))
         ->toThrow(InvalidPhoneNumberException::class);
 });
+
+it('prepends a leading 0 for dialing, on top of whatever normalize() itself would produce', function (string $raw, string $expected) {
+    expect(PhoneNumberNormalizer::normalizeForDialing($raw))->toBe($expected);
+})->with([
+    'mobile, already local format' => ['11987654321', '011987654321'],
+    'landline, already local format' => ['1132654321', '01132654321'],
+    'mobile, with +55 (country code stripped, 0 still added)' => ['+5511987654321', '011987654321'],
+    'mobile, already has a leading trunk 0 in the input' => ['011987654321', '011987654321'],
+]);
+
+it('still rejects input normalize() itself would reject, before ever prepending the 0', function () {
+    expect(fn () => PhoneNumberNormalizer::normalizeForDialing('not-a-phone'))
+        ->toThrow(InvalidPhoneNumberException::class);
+});

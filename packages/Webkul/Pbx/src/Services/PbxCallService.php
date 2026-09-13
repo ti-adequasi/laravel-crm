@@ -67,7 +67,9 @@ class PbxCallService
         // Throws InvalidPhoneNumberException on anything it can't
         // confidently resolve — deliberately left to propagate rather than
         // caught here, so the PBX is never sent an unnormalized number.
-        $normalized = PhoneNumberNormalizer::normalize($rawPhone);
+        // normalizeForDialing() (not normalize()) is what the PBX's own
+        // dial-plan actually requires — see its own docblock.
+        $normalized = PhoneNumberNormalizer::normalizeForDialing($rawPhone);
 
         $originateResponse = $this->pbxClient->originate($ramal, $normalized);
 

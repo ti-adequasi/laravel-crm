@@ -33,6 +33,27 @@ use Webkul\Pbx\Exceptions\InvalidPhoneNumberException;
 class PhoneNumberNormalizer
 {
     /**
+     * What POST /v1/dialer/calls' own `telefone` actually needs to
+     * route correctly — confirmed directly with the user after they fixed
+     * the PBX's own outbound dial-plan rule, which requires a literal
+     * leading "0" trunk-prefix digit in front of the plain national number
+     * normalize() produces, for landline and mobile numbers alike (not
+     * just a "dial 0 for an outside line" mobile-only convention). Kept
+     * separate from normalize()'s own return value on purpose:
+     * normalize()'s output (no leading 0) is the canonical form used for
+     * de-duplication and for querying GET /v1/calls' own partial-match
+     * `number` filter, and a stored CDR's own destination_number is a
+     * substring match either way regardless of a leading 0 — only the
+     * outbound POST body itself needs this extra digit.
+     *
+     * @throws InvalidPhoneNumberException
+     */
+    public static function normalizeForDialing(?string $raw): string
+    {
+        return '0'.self::normalize($raw);
+    }
+
+    /**
      * @throws InvalidPhoneNumberException
      */
     public static function normalize(?string $raw): string
