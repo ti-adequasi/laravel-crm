@@ -19,6 +19,7 @@ use Webkul\Installer\Providers\InstallerServiceProvider;
 use Webkul\Lead\Providers\LeadServiceProvider;
 use Webkul\LeadEnrichment\Providers\LeadEnrichmentServiceProvider;
 use Webkul\LeadGreen\Providers\LeadGreenServiceProvider;
+use Webkul\LeadPeering\Providers\LeadPeeringServiceProvider;
 use Webkul\Marketing\Providers\MarketingServiceProvider;
 use Webkul\Pbx\Providers\PbxServiceProvider;
 use Webkul\Product\Providers\ProductServiceProvider;
@@ -63,6 +64,7 @@ return [
     LeadServiceProvider::class,
     LeadEnrichmentServiceProvider::class,
     LeadGreenServiceProvider::class,
+    LeadPeeringServiceProvider::class,
     PbxServiceProvider::class,
     ProductServiceProvider::class,
     QuoteServiceProvider::class,

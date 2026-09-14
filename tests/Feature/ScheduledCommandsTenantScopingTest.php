@@ -4,7 +4,9 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Webkul\Contact\Models\Person;
 use Webkul\LeadGreen\Models\LeadGreen;
-use Webkul\LeadGreen\Services\LeadEnrichmentService;
+use Webkul\LeadGreen\Services\LeadEnrichmentService as LeadGreenEnrichmentService;
+use Webkul\LeadPeering\Models\LeadPeering;
+use Webkul\LeadPeering\Services\LeadEnrichmentService as LeadPeeringEnrichmentService;
 use Webkul\Marketing\Mail\CampaignMail;
 use Webkul\Marketing\Models\Campaign;
 use Webkul\Tenant\Repositories\TenantRepository;
@@ -26,7 +28,7 @@ it('gives every active tenant its own --limit budget instead of one tenant consu
 
     // Fakes the real website-scraping call this command would otherwise
     // make — the command's own tenant-iteration is what's under test.
-    $this->mock(LeadEnrichmentService::class, function ($mock) {
+    $this->mock(LeadGreenEnrichmentService::class, function ($mock) {
         $mock->shouldReceive('enrichFromWebsite')->andReturn([]);
     });
 
@@ -40,6 +42,39 @@ it('gives every active tenant its own --limit budget instead of one tenant consu
         // here, so it must NOT reach back into Tenant A's own remaining
         // backlog and process more than its fair one-per-run share.
         ->and(LeadGreen::where('tenant_id', $tenantA->id)->whereNull('enriched_at')->count())->toBe(2);
+});
+
+it('gives every active tenant its own --limit budget for leadpeering:enrich-pending too', function () {
+    $tenantA = app(TenantRepository::class)->create(['name' => 'LeadPeering Tenant A', 'code' => 'leadpeering-a-'.uniqid(), 'is_active' => true]);
+    $tenantB = app(TenantRepository::class)->create(['name' => 'LeadPeering Tenant B', 'code' => 'leadpeering-b-'.uniqid(), 'is_active' => true]);
+
+    foreach (range(1, 3) as $i) {
+        LeadPeering::create([
+            'tenant_id' => $tenantA->id,
+            'peeringdb_id' => 9000 + $i,
+            'peeringdb_type' => 'net',
+            'name' => "A Prospect {$i}",
+            'website' => 'https://a-prospect-'.$i.'.example',
+        ]);
+    }
+
+    $prospectB = LeadPeering::create([
+        'tenant_id' => $tenantB->id,
+        'peeringdb_id' => 9100,
+        'peeringdb_type' => 'net',
+        'name' => 'B Prospect',
+        'website' => 'https://b-prospect.example',
+    ]);
+
+    $this->mock(LeadPeeringEnrichmentService::class, function ($mock) {
+        $mock->shouldReceive('enrichFromWebsite')->andReturn([]);
+    });
+
+    $this->artisan('leadpeering:enrich-pending', ['--limit' => 1])->assertSuccessful();
+
+    expect(LeadPeering::where('tenant_id', $tenantA->id)->whereNotNull('enriched_at')->count())->toBe(1)
+        ->and($prospectB->fresh()->enriched_at)->not->toBeNull()
+        ->and(LeadPeering::where('tenant_id', $tenantA->id)->whereNull('enriched_at')->count())->toBe(2);
 });
 
 it('never lets one tenant\'s campaign reach another tenant\'s contacts', function () {

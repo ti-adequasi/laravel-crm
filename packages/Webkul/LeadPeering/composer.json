@@ -1,0 +1,24 @@
+{
+    "name": "krayin/laravel-leadpeering",
+    "license": "MIT",
+    "description": "PeeringDB-based prospecting (network operators, data centers, organizations) and website/CNPJ enrichment for Krayin CRM. Mirrors the LeadGreen module's architecture for a different data source.",
+    "require": {
+        "krayin/laravel-core": "^1.0",
+        "krayin/laravel-lead": "^1.0",
+        "krayin/laravel-contact": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Webkul\\LeadPeering\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Webkul\\LeadPeering\\Providers\\LeadPeeringServiceProvider"
+            ],
+            "aliases": {}
+        }
+    },
+    "minimum-stability": "dev"
+}

@@ -720,6 +720,37 @@ data on it.
 
 ---
 
+## An `icon-class` You're Copying From Existing Code May Not Exist Either
+
+The same "don't assume, verify" lesson as the attribute above applies to
+`icon-class`/`icon-*` CSS classes in a menu entry, a DataGrid column
+closure, or a Blade view — and copying one from *existing, shipped* code is
+not verification: LeadGreen's own `LeadGreenDataGrid` uses `icon-globe` in
+its website column, and that class does not exist anywhere in Admin's
+compiled icon font. Nothing errors when it doesn't exist — the glyph is
+just silently missing, easy to miss in a quick look and easy to copy
+forward into new code without ever noticing the original was wrong.
+
+Verify against the actual compiled CSS, not a memory of what "sounds
+right" or what another package already does:
+
+```bash
+grep -o '\.icon-[a-zA-Z0-9_-]*' public/admin/build/assets/app-*.css | sort -u
+```
+
+For a specific class, `grep -q '\.icon-name\b' public/admin/build/assets/app-*.css`
+(word-boundary — `icon-setting` and `icon-settings` are both real, distinct
+classes; a substring check would false-positive one for the other). A menu
+entry's icon is the highest-stakes place to get this wrong (most visible,
+least likely to be noticed in a quick check) — reuse a class already
+confirmed working elsewhere in this exact package family (`icon-leads`, the
+one LeadGreen's own menu actually uses) rather than a plausible-sounding
+guess. Lower-stakes spots (an inline icon next to text that already
+conveys the same meaning another way) are a reasonable place to just drop
+the icon rather than add a fourth guess.
+
+---
+
 ## `Attribute` Needs Tenant-*Or*-Global Scoping, Not Plain `BelongsToTenant`
 
 Found the hard way: every seeded attribute (Person's `contact_numbers`,
@@ -956,19 +987,25 @@ Two separate steps, in two separate places — don't conflate them:
        }
    }
    ```
-2. **Actually scheduling it.** Every real scheduled task in this codebase —
-   there is currently exactly one, `inbound-emails:process` — is registered
-   in the root `routes/console.php` via `Schedule::command(...)`, not from
+2. **Actually scheduling it.** Every scheduled task in this codebase that
+   follows the intended convention — `inbound-emails:process`,
+   `pbx:reconcile-calls`, `leadpeering:enrich-pending` — is registered in
+   the root `routes/console.php` via `Schedule::command(...)`, not from
    inside any package's provider. Follow that, not a per-package
-   `$this->app->booted(fn () => ... Schedule::command(...))` call: this app
-   has never actually used the latter, and scattering schedule
-   registrations across every package's own provider defeats the one
-   thing `routes/console.php` gives you today — one file to read to see
-   everything that runs on a timer.
+   `$this->app->booted(fn () => ... Schedule::command(...))` call:
+   scattering schedule registrations across every package's own provider
+   defeats the one thing `routes/console.php` gives you — one file to read
+   to see everything that runs on a timer.
    ```php
    // routes/console.php
    Schedule::command('your:command')->everyFiveMinutes();
    ```
+   **`LeadGreen`'s own `leadgreen:enrich-pending` is a known exception, not
+   a precedent** — it schedules itself via exactly the `booted()` hook step
+   1 above says not to use. Don't copy it just because it's real, shipped
+   code in this same codebase; `LeadPeering`'s identically-shaped
+   `leadpeering:enrich-pending` scheduled the intended way is the example
+   to follow instead.
 
 ---
 
