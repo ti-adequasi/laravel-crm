@@ -39,6 +39,19 @@ class LeadPeeringRepository extends Repository
     ];
 
     /**
+     * Human-readable labels for PeeringDB's own policy_general vocabulary
+     * (a network's public peering-openness policy) — its real, fixed enum,
+     * confirmed against the live API's own returned values ("Open",
+     * "Restrictive" observed directly).
+     */
+    protected const PEERING_POLICY_LABELS = [
+        'Open' => 'Aberta',
+        'Selective' => 'Seletiva',
+        'Restrictive' => 'Restritiva',
+        'No' => 'Não realiza peering público',
+    ];
+
+    /**
      * Create a new repository instance.
      */
     public function __construct(
@@ -192,9 +205,9 @@ class LeadPeeringRepository extends Repository
     /**
      * Create a Person from the prospect's enriched data and link it to the
      * organization. Prefers a partner/administrator from the CNPJ "quadro de
-     * sócios", falls back to the DPO, then to the prospect's own name — a
-     * Lead reaches its organization through a person, so one is always
-     * created even without real enrichment data.
+     * sócios", falls back to the prospect's own name — a Lead reaches its
+     * organization through a person, so one is always created even without
+     * real enrichment data.
      */
     protected function createPersonFromLead(LeadPeering $prospect, $organization)
     {
@@ -217,16 +230,15 @@ class LeadPeeringRepository extends Repository
             $jobTitle = $socios[0]['qualificacao'] ?? null;
         }
 
-        if (! $name && ! empty($prospect->dpo_name)) {
-            $name = $prospect->dpo_name;
-            $jobTitle = 'Encarregado de Dados (DPO)';
-        }
-
         if (! $name) {
             $name = $prospect->name;
         }
 
-        $emails = collect([$prospect->email, $prospect->company_email, $prospect->dpo_email])
+        // sales_email/tech_email/sales_phone/tech_phone come straight from
+        // PeeringDB itself (a facility's own listed contacts) — real,
+        // structured contact data, not something website-scraping enrichment
+        // had to go find.
+        $emails = collect([$prospect->email, $prospect->company_email, $prospect->sales_email, $prospect->tech_email])
             ->merge(is_array($prospect->emails_found) ? $prospect->emails_found : [])
             ->filter()
             ->unique()
@@ -234,7 +246,7 @@ class LeadPeeringRepository extends Repository
             ->map(fn ($e) => ['value' => $e, 'label' => 'work'])
             ->all();
 
-        $phones = collect([$prospect->whatsapp, $prospect->company_phone])
+        $phones = collect([$prospect->whatsapp, $prospect->company_phone, $prospect->sales_phone, $prospect->tech_phone])
             ->filter()
             ->unique()
             ->values()
@@ -281,9 +293,21 @@ class LeadPeeringRepository extends Repository
                 $lines[] = 'Tipo de rede: '.(self::NETWORK_TYPE_LABELS[$prospect->info_type] ?? $prospect->info_type);
             }
 
+            if ($prospect->info_scope) {
+                $lines[] = "Abrangência: {$prospect->info_scope}";
+            }
+
             if ($prospect->info_traffic) {
                 $lines[] = "Tráfego estimado: {$prospect->info_traffic}";
             }
+
+            if ($prospect->policy_general) {
+                $lines[] = 'Política de peering: '.(self::PEERING_POLICY_LABELS[$prospect->policy_general] ?? $prospect->policy_general);
+            }
+        }
+
+        if ($prospect->peeringdb_type === 'fac' && $prospect->region_continent) {
+            $lines[] = "Região: {$prospect->region_continent}";
         }
 
         $presence = array_filter([
@@ -308,6 +332,16 @@ class LeadPeeringRepository extends Repository
 
         if ($others) {
             $contacts[] = 'Other emails: '.implode(', ', $others);
+        }
+
+        // sales_email/tech_email/*_phone come straight from PeeringDB's own
+        // facility listing — real contacts, not something enrichment scraped.
+        if ($prospect->sales_email || $prospect->sales_phone) {
+            $contacts[] = 'Comercial (PeeringDB): '.trim(($prospect->sales_email ?? '').' '.($prospect->sales_phone ? "({$prospect->sales_phone})" : ''));
+        }
+
+        if ($prospect->tech_email || $prospect->tech_phone) {
+            $contacts[] = 'Técnico (PeeringDB): '.trim(($prospect->tech_email ?? '').' '.($prospect->tech_phone ? "({$prospect->tech_phone})" : ''));
         }
 
         if ($prospect->whatsapp) {
@@ -384,19 +418,6 @@ class LeadPeeringRepository extends Repository
                     $q = ! empty($socio['qualificacao']) ? ' — '.$socio['qualificacao'] : '';
                     $lines[] = '  - '.($socio['nome'] ?? '-').$q;
                 }
-            }
-        }
-
-        if ($prospect->has_privacy_policy || $prospect->has_dpo) {
-            $lines[] = '';
-            $lines[] = '--- LGPD ---';
-
-            if ($prospect->has_privacy_policy) {
-                $lines[] = 'Privacy policy: yes'.($prospect->privacy_policy_url ? " ({$prospect->privacy_policy_url})" : '');
-            }
-
-            if ($prospect->dpo_name || $prospect->dpo_email) {
-                $lines[] = 'DPO: '.trim(($prospect->dpo_name ?? '').' '.($prospect->dpo_email ? "<{$prospect->dpo_email}>" : ''));
             }
         }
 
@@ -549,6 +570,8 @@ class LeadPeeringRepository extends Repository
             'asn' => $r['asn'] ?? null,
             'info_type' => $r['info_type'] ?? null,
             'info_traffic' => $r['info_traffic'] ?? null,
+            'info_scope' => $r['info_scope'] ?? null,
+            'policy_general' => $r['policy_general'] ?? null,
             'notes' => $r['notes'] ?? null,
             'social_media' => $r['social_media'] ?? [],
             'country' => $r['country'] ?? null,
@@ -562,6 +585,11 @@ class LeadPeeringRepository extends Repository
             'net_count' => $r['net_count'] ?? null,
             'fac_count' => $r['fac_count'] ?? null,
             'ix_count' => $r['ix_count'] ?? null,
+            'region_continent' => $r['region_continent'] ?? null,
+            'sales_email' => $r['sales_email'] ?? null,
+            'sales_phone' => $r['sales_phone'] ?? null,
+            'tech_email' => $r['tech_email'] ?? null,
+            'tech_phone' => $r['tech_phone'] ?? null,
             'lead_status' => 'novo',
         ];
     }

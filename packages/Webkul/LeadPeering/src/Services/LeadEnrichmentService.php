@@ -60,12 +60,6 @@ class LeadEnrichmentService
      */
     public function enrichFromWebsite(string $website): array
     {
-        // Off by default for segments where a privacy policy / Data Protection
-        // Officer isn't a meaningful prospecting signal — see Configuration >
-        // PeeringDB Leads > Enrichment. A separate setting from LeadGreen's own
-        // (each self-contained module is configured independently).
-        $detectLgpd = (bool) core()->getConfigData('lead_peering.settings.enrichment.detect_lgpd_signals');
-
         $result = [
             'email' => null,
             'email_source' => null,
@@ -76,11 +70,6 @@ class LeadEnrichmentService
             'facebook' => null,
             'linkedin' => null,
             'whatsapp' => null,
-            'has_privacy_policy' => false,
-            'privacy_policy_url' => null,
-            'has_dpo' => false,
-            'dpo_name' => null,
-            'dpo_email' => null,
             'cnpj' => null,
             'enrichment_status' => 'failed',
             'enrichment_score' => 0,
@@ -100,7 +89,6 @@ class LeadEnrichmentService
         $socials = ['instagram' => null, 'facebook' => null, 'linkedin' => null];
         $whatsapp = null;
         $homeHtml = null;
-        $privacyUrl = null;
         $cnpj = null;
 
         // The "website" is actually a contact link / social profile (wa.me,
@@ -132,7 +120,7 @@ class LeadEnrichmentService
             $companyUrl = $this->findCompanyLink($aggHtml, $base);
 
             if (! $companyUrl) {
-                // No real company site behind it: keep the contacts, skip privacy/DPO.
+                // No real company site behind it: keep the contacts.
                 $result['instagram'] = $socials['instagram'];
                 $result['facebook'] = $socials['facebook'];
                 $result['linkedin'] = $socials['linkedin'];
@@ -220,11 +208,6 @@ class LeadEnrichmentService
                 }
             }
 
-            // Look for a privacy policy link on any visited page.
-            if ($detectLgpd && ! $privacyUrl) {
-                $privacyUrl = $this->extractPrivacyLink($html, $base);
-            }
-
             // Look for the company's CNPJ (usually in the footer).
             if (! $cnpj) {
                 $cnpj = app(CnpjService::class)->extractCnpj($html);
@@ -253,154 +236,10 @@ class LeadEnrichmentService
         $result['whatsapp'] = $whatsapp;
         $result['cnpj'] = $cnpj;
 
-        // Privacy policy & DPO (Encarregado LGPD) analysis. $privacyUrl is
-        // never set above when $detectLgpd is off, so everything below
-        // (including the extra fetch to analyze the policy page for a DPO)
-        // naturally stays false/null/skipped without a separate check here.
-        $result['has_privacy_policy'] = ! empty($privacyUrl);
-        $result['privacy_policy_url'] = $privacyUrl;
-        $result['has_dpo'] = false;
-        $result['dpo_name'] = null;
-        $result['dpo_email'] = null;
-
-        if ($privacyUrl) {
-            $privacyHtml = $this->fetch($privacyUrl);
-
-            if ($privacyHtml !== null) {
-                $dpo = $this->analyzePrivacyPolicy($privacyHtml, $domain);
-
-                $result['has_dpo'] = $dpo['has_dpo'];
-                $result['dpo_name'] = $dpo['dpo_name'];
-                $result['dpo_email'] = $dpo['dpo_email'];
-            }
-        }
-
         $result['enrichment_score'] = $this->score($result);
         $result['enrichment_status'] = $result['enrichment_score'] > 0 ? 'enriched' : 'empty';
 
         return $result;
-    }
-
-    /**
-     * Find a privacy-policy URL among the page's links.
-     */
-    protected function extractPrivacyLink(string $html, string $base): ?string
-    {
-        // Match anchors whose href or text mentions privacy / LGPD / data protection.
-        if (! preg_match_all('/<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/is', $html, $matches, PREG_SET_ORDER)) {
-            return null;
-        }
-
-        $needle = '/(pol[ií]tica[\s\-_]*de[\s\-_]*privacidade|privacidade|privacy[\s\-_]*policy|privacy|lgpd|prote[cç][aã]o[\s\-_]*de[\s\-_]*dados)/iu';
-
-        foreach ($matches as $m) {
-            $href = $m[1];
-            $text = strip_tags($m[2]);
-
-            if (preg_match($needle, $href) || preg_match($needle, $text)) {
-                return $this->resolveUrl($href, $base);
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Inspect a privacy-policy page for a named DPO / Encarregado (LGPD).
-     *
-     * @return array{has_dpo: bool, dpo_name: ?string, dpo_email: ?string}
-     */
-    protected function analyzePrivacyPolicy(string $html, string $domain): array
-    {
-        $out = ['has_dpo' => false, 'dpo_name' => null, 'dpo_email' => null];
-
-        // Normalize to plain text for proximity/name matching.
-        $text = preg_replace('/\s+/u', ' ', trim(strip_tags($html)));
-
-        $hasMention = (bool) preg_match('/\b(encarregad[oa]|data\s+protection\s+officer|\bdpo\b)/iu', $text);
-
-        if (! $hasMention) {
-            return $out;
-        }
-
-        // 1) Try to capture a name right after the role label.
-        $name = '([\p{Lu}][\p{L}\'\-]+(?:\s+(?:d[aeo]s?\s+)?[\p{Lu}][\p{L}\'\-]+){1,4})';
-
-        $namePatterns = [
-            '/(?i:nome\s+do[\s\(]*encarregad[oa][\s\)]*)\s*[:\-–]\s*'.$name.'/u',
-            '/(?i:encarregad[oa](?:\s+(?:de\s+(?:prote[cç][aã]o\s+de\s+)?dados|pelo\s+tratamento\s+de\s+dados\s+pessoais))?(?:\s*\(?\s*dpo\s*\)?)?)\s*[:\-–]\s*'.$name.'/u',
-            '/(?i:data\s+protection\s+officer|\bdpo\b)\s*[:\-–]\s*'.$name.'/u',
-        ];
-
-        foreach ($namePatterns as $pattern) {
-            if (preg_match($pattern, $text, $m)) {
-                $out['dpo_name'] = trim($m[1]);
-                break;
-            }
-        }
-
-        // 2) Find the DPO e-mail: prefer role-based locals, then proximity to the mention.
-        $out['dpo_email'] = $this->extractDpoEmail($html, $text, $domain);
-
-        // Only flag a DPO when one is actually identifiable (named or contactable),
-        // not merely because the word "encarregado" appears somewhere.
-        $out['has_dpo'] = $out['dpo_name'] !== null || $out['dpo_email'] !== null;
-
-        return $out;
-    }
-
-    /**
-     * Extract the DPO / Encarregado e-mail from the privacy page.
-     */
-    protected function extractDpoEmail(string $html, string $text, string $domain): ?string
-    {
-        $emails = array_unique($this->extractEmails($html));
-
-        if (empty($emails)) {
-            return null;
-        }
-
-        // 1) Role-based local part (dpo@, encarregado@, privacidade@, lgpd@...).
-        foreach ($emails as $email) {
-            if (preg_match('/^(dpo|encarregad[oa]?|privacidade|lgpd|protecao(de)?dados|dataprotection|dados)@/i', $email)) {
-                return $email;
-            }
-        }
-
-        // 2) E-mail appearing closest to an "encarregado/dpo" mention in the text.
-        if (preg_match('/\b(encarregad[oa]|data\s+protection\s+officer|\bdpo\b)/iu', $text, $mm, PREG_OFFSET_CAPTURE)) {
-            $anchor = $mm[0][1];
-            $best = null;
-            $bestDist = PHP_INT_MAX;
-
-            foreach ($emails as $email) {
-                $pos = mb_stripos($text, $email);
-
-                if ($pos !== false) {
-                    $dist = abs($pos - $anchor);
-
-                    if ($dist < $bestDist && $dist < 400) {
-                        $bestDist = $dist;
-                        $best = $email;
-                    }
-                }
-            }
-
-            if ($best) {
-                return $best;
-            }
-        }
-
-        // 3) Fall back to a company-domain e-mail if present.
-        if ($domain) {
-            foreach ($emails as $email) {
-                if (str_ends_with($email, '@'.$domain)) {
-                    return $email;
-                }
-            }
-        }
-
-        return null;
     }
 
     /**

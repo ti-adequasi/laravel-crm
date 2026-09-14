@@ -13,8 +13,6 @@ class EnrichmentController extends Controller
 {
     /**
      * E-mail domains that don't identify a company.
-     *
-     * @var array
      */
     protected array $genericMailDomains = [
         'gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'yahoo.com.br',
@@ -58,9 +56,9 @@ class EnrichmentController extends Controller
             $company = $cnpj ? app(CnpjService::class)->lookup($cnpj) : null;
 
             $activity = $this->activityRepository->create([
-                'type'    => 'note',
+                'type' => 'note',
                 'comment' => $this->buildNote($website, $data, $company),
-                'title'   => trans('lead_enrichment::app.note-title'),
+                'title' => trans('lead_enrichment::app.note-title'),
                 'user_id' => auth()->id(),
             ]);
 
@@ -156,11 +154,11 @@ class EnrichmentController extends Controller
             $lines[] = trans('lead_enrichment::app.note.cnpj', ['cnpj' => $company['cnpj'] ?? '-']);
 
             foreach ([
-                'razao_social'       => 'lead_enrichment::app.note.company-name',
-                'nome_fantasia'      => 'lead_enrichment::app.note.trade-name',
+                'razao_social' => 'lead_enrichment::app.note.company-name',
+                'nome_fantasia' => 'lead_enrichment::app.note.trade-name',
                 'situacao_cadastral' => 'lead_enrichment::app.note.status',
-                'porte'              => 'lead_enrichment::app.note.size',
-                'cnae_description'   => 'lead_enrichment::app.note.activity',
+                'porte' => 'lead_enrichment::app.note.size',
+                'cnae_description' => 'lead_enrichment::app.note.activity',
                 'inscricao_estadual' => 'lead_enrichment::app.note.state-registration',
             ] as $field => $key) {
                 if (! empty($company[$field])) {
@@ -176,21 +174,6 @@ class EnrichmentController extends Controller
                     $q = ! empty($socio['qualificacao']) ? ' — '.$socio['qualificacao'] : '';
                     $lines[] = '  - '.($socio['nome'] ?? '-').$q;
                 }
-            }
-        }
-
-        if (! empty($data['has_privacy_policy']) || ! empty($data['has_dpo'])) {
-            $lines[] = '';
-            $lines[] = trans('lead_enrichment::app.note.lgpd-title');
-
-            if (! empty($data['has_privacy_policy'])) {
-                $lines[] = trans('lead_enrichment::app.note.privacy-policy');
-            }
-
-            if (! empty($data['dpo_name']) || ! empty($data['dpo_email'])) {
-                $lines[] = trans('lead_enrichment::app.note.dpo', [
-                    'contact' => trim(($data['dpo_name'] ?? '').' '.(! empty($data['dpo_email']) ? "<{$data['dpo_email']}>" : '')),
-                ]);
             }
         }
 

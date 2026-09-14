@@ -93,7 +93,7 @@ return new class extends Migration
         // it exists, since Krayin's own seeder doesn't ship one.
         if (! DB::table('lead_sources')->where('name', 'Google')->exists()) {
             DB::table('lead_sources')->insert([
-                'name'       => 'Google',
+                'name' => 'Google',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

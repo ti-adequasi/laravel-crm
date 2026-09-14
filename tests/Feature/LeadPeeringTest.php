@@ -9,6 +9,7 @@ use Webkul\Lead\Models\Lead;
 use Webkul\Lead\Models\Pipeline;
 use Webkul\LeadPeering\Models\LeadPeering;
 use Webkul\LeadPeering\Models\LeadPeeringProxy;
+use Webkul\LeadPeering\Repositories\LeadPeeringRepository;
 use Webkul\LeadPeering\Services\CnpjService;
 use Webkul\LeadPeering\Services\LeadEnrichmentService;
 use Webkul\Tenant\Repositories\TenantRepository;
@@ -67,7 +68,6 @@ it('registers acl, menu, and settings entries', function () {
     expect(collect(config('acl'))->pluck('key'))->toContain('lead_peering');
     expect(collect(config('menu.admin'))->pluck('key'))->toContain('lead_peering');
     expect(collect(config('core_config'))->pluck('key'))->toContain('lead_peering.settings.api_keys');
-    expect(collect(config('core_config'))->pluck('key'))->toContain('lead_peering.settings.enrichment');
 });
 
 it('redirects guests away from the leadpeering pages', function () {
@@ -164,6 +164,52 @@ it('does send a country filter when searching organizations', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), 'country=BR'));
 });
 
+it('sends info_scope and policy_general filters only when searching networks', function () {
+    Http::fake([
+        'www.peeringdb.com/api/net*' => Http::response(['data' => [], 'meta' => []], 200),
+        'www.peeringdb.com/api/org*' => Http::response(['data' => [], 'meta' => []], 200),
+    ]);
+
+    test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadpeering.search'), ['type' => 'net', 'info_scope' => 'Global', 'policy_general' => 'Open'])
+        ->assertOk();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/api/net')
+        && str_contains($request->url(), 'info_scope=Global')
+        && str_contains($request->url(), 'policy_general=Open'));
+
+    // Org has no info_scope/policy_general of its own — the filter must
+    // never be built for it, same reasoning as the country/net case above.
+    test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadpeering.search'), ['type' => 'org', 'info_scope' => 'Global', 'policy_general' => 'Open'])
+        ->assertOk();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/api/org')
+        && ! str_contains($request->url(), 'info_scope=')
+        && ! str_contains($request->url(), 'policy_general='));
+});
+
+it('sends a region_continent filter only when searching facilities', function () {
+    Http::fake([
+        'www.peeringdb.com/api/fac*' => Http::response(['data' => [], 'meta' => []], 200),
+        'www.peeringdb.com/api/net*' => Http::response(['data' => [], 'meta' => []], 200),
+    ]);
+
+    test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadpeering.search'), ['type' => 'fac', 'region_continent' => 'North America'])
+        ->assertOk();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/api/fac')
+        && str_contains(urldecode($request->url()), 'region_continent=North America'));
+
+    test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadpeering.search'), ['type' => 'net', 'region_continent' => 'North America'])
+        ->assertOk();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/api/net')
+        && ! str_contains($request->url(), 'region_continent'));
+});
+
 it('imports only the selected prospect_keys, leaving the rest of the batch untouched', function () {
     Http::fake([
         'www.peeringdb.com/api/net*' => Http::response(['data' => [
@@ -241,6 +287,56 @@ it('requires at least one prospect_key to import', function () {
     test()->actingAs(getDefaultAdmin())
         ->post(route('admin.leadpeering.import'), ['token' => $search['token']])
         ->assertSessionHasErrors('prospect_keys');
+});
+
+it('carries new PeeringDB fields (scope, policy, region, direct facility contacts) through search and import', function () {
+    Http::fake([
+        'www.peeringdb.com/api/net*' => Http::response(['data' => [
+            ['id' => 901, 'name' => 'Scoped Net', 'website' => 'https://scoped.example.com', 'asn' => 901, 'info_scope' => 'Global', 'policy_general' => 'Open'],
+        ], 'meta' => []], 200),
+        'www.peeringdb.com/api/fac*' => Http::response(['data' => [
+            ['id' => 902, 'name' => 'Contactable DC', 'website' => 'https://dc.example.com', 'region_continent' => 'North America', 'sales_email' => 'sales@dc.example.com', 'sales_phone' => '555-0100', 'tech_email' => 'noc@dc.example.com', 'tech_phone' => '555-0101'],
+        ], 'meta' => []], 200),
+    ]);
+
+    $netSearch = test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadpeering.search'), ['type' => 'net', 'query' => 'Scoped'])
+        ->json();
+
+    expect($netSearch['leads'][0]['info_scope'])->toBe('Global');
+    expect($netSearch['leads'][0]['policy_general'])->toBe('Open');
+
+    test()->actingAs(getDefaultAdmin())->post(route('admin.leadpeering.import'), [
+        'token' => $netSearch['token'],
+        'prospect_keys' => ['net:901'],
+    ]);
+
+    $netProspect = LeadPeering::where('peeringdb_type', 'net')->where('peeringdb_id', 901)->first();
+    expect($netProspect->info_scope)->toBe('Global');
+    expect($netProspect->policy_general)->toBe('Open');
+
+    $facSearch = test()->actingAs(getDefaultAdmin())
+        ->post(route('admin.leadpeering.search'), ['type' => 'fac', 'query' => 'Contactable'])
+        ->json();
+
+    test()->actingAs(getDefaultAdmin())->post(route('admin.leadpeering.import'), [
+        'token' => $facSearch['token'],
+        'prospect_keys' => ['fac:902'],
+    ]);
+
+    $facProspect = LeadPeering::where('peeringdb_type', 'fac')->where('peeringdb_id', 902)->first();
+    expect($facProspect->region_continent)->toBe('North America');
+    expect($facProspect->sales_email)->toBe('sales@dc.example.com');
+    expect($facProspect->tech_email)->toBe('noc@dc.example.com');
+
+    // These real, PeeringDB-provided contacts feed straight into the
+    // created Person's own emails/phones on conversion — no website
+    // scraping needed for a facility that lists its own contacts.
+    $lead = app(LeadPeeringRepository::class)->convertToLead($facProspect->id);
+    $person = Person::find($lead->person_id);
+
+    expect(collect($person->emails)->pluck('value'))->toContain('sales@dc.example.com');
+    expect(collect($person->contact_numbers)->pluck('value'))->toContain('555-0100');
 });
 
 it('converts a prospect into a CRM lead, linked through a Person to an Organization, using its real PeeringDB country', function () {
@@ -375,37 +471,6 @@ it('falls back to ReceitaWS when BrasilAPI and CNPJá Open both fail, converting
     Http::assertSent(fn ($request) => str_contains($request->url(), 'receitaws.com.br'));
 });
 
-it('detects privacy policy / DPO signals by default, and skips the extra fetch entirely once disabled', function () {
-    Http::fake([
-        'empresa-teste-peering.com.br/privacidade' => Http::response('<html>Encarregado de Dados: joao@empresa-teste-peering.com.br</html>', 200),
-        'empresa-teste-peering.com.br/*' => Http::response('<html><a href="/privacidade">Política de Privacidade</a></html>', 200),
-    ]);
-
-    $service = app(LeadEnrichmentService::class);
-
-    $enabled = $service->enrichFromWebsite('https://empresa-teste-peering.com.br');
-
-    expect($enabled['has_privacy_policy'])->toBeTrue();
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/privacidade'));
-
-    DB::table('core_config')->updateOrInsert(
-        ['code' => 'lead_peering.settings.enrichment.detect_lgpd_signals'],
-        ['value' => 0]
-    );
-
-    Http::fake([
-        'empresa-teste-peering.com.br/privacidade' => Http::response('<html>Encarregado de Dados: joao@empresa-teste-peering.com.br</html>', 200),
-        'empresa-teste-peering.com.br/*' => Http::response('<html><a href="/privacidade">Política de Privacidade</a></html>', 200),
-    ]);
-
-    $disabled = $service->enrichFromWebsite('https://empresa-teste-peering.com.br');
-
-    expect($disabled['has_privacy_policy'])->toBeFalse();
-    expect($disabled['has_dpo'])->toBeFalse();
-    // Not just "ignored" — the privacy page is never even requested.
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/privacidade'));
-});
-
 it('verifies the picked e-mail via Disify, and stores email_quality as its numeric rank weight', function () {
     Http::fake([
         'disify.com/*' => Http::response([
@@ -446,24 +511,4 @@ it('leaves email_verified null (not false) when Disify itself is unreachable', f
     $result = app(LeadEnrichmentService::class)->enrichFromWebsite('https://empresa-teste-peering.com.br');
 
     expect($result['email_verified'])->toBeNull();
-});
-
-it('hides the privacy policy / DPO grid columns once LGPD detection is disabled', function () {
-    $columns = fn () => test()->actingAs(getDefaultAdmin())
-        ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
-        ->getJson(route('admin.leadpeering.index'))
-        ->json('columns');
-
-    $visible = fn ($columns, $index) => collect($columns)->firstWhere('index', $index)['visibility'];
-
-    expect($visible($columns(), 'has_privacy_policy'))->toBeTrue();
-    expect($visible($columns(), 'has_dpo'))->toBeTrue();
-
-    DB::table('core_config')->updateOrInsert(
-        ['code' => 'lead_peering.settings.enrichment.detect_lgpd_signals'],
-        ['value' => 0]
-    );
-
-    expect($visible($columns(), 'has_privacy_policy'))->toBeFalse();
-    expect($visible($columns(), 'has_dpo'))->toBeFalse();
 });

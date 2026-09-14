@@ -10,7 +10,11 @@ return [
         'key' => 'lead_peering.settings',
         'name' => 'leadpeering::app.settings.section',
         'info' => 'leadpeering::app.settings.section-info',
-        'icon' => 'icon-settings',
+        // The real icon-font class is "icon-setting" (singular) — "icon-
+        // settings" (plural) does not exist on its own, only as a prefix
+        // of compound names like icon-settings-group. Confirmed against
+        // the compiled CSS; a first pass here got this wrong the same way.
+        'icon' => 'icon-setting',
         'sort' => 1,
     ], [
         'key' => 'lead_peering.settings.api_keys',
@@ -33,20 +37,6 @@ return [
                 'type' => 'number',
                 'default' => 45,
                 'validation' => 'min:1',
-            ],
-        ],
-    ], [
-        'key' => 'lead_peering.settings.enrichment',
-        'name' => 'leadpeering::app.settings.enrichment.title',
-        'info' => 'leadpeering::app.settings.enrichment.info',
-        'sort' => 2,
-        'fields' => [
-            [
-                'name' => 'detect_lgpd_signals',
-                'title' => 'leadpeering::app.settings.enrichment.detect-lgpd-signals',
-                'info' => 'leadpeering::app.settings.enrichment.detect-lgpd-signals-info',
-                'type' => 'boolean',
-                'default' => 1,
             ],
         ],
     ],

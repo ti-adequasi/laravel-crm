@@ -86,13 +86,6 @@
                                     <div v-if="selected.situacao_cadastral"><label class="text-xs font-medium text-gray-500">@lang('leadgreen::app.enrichment.situacao')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.situacao_cadastral }}</p></div>
                                     <div v-if="selected.porte"><label class="text-xs font-medium text-gray-500">@lang('leadgreen::app.enrichment.porte')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.porte }}</p></div>
                                 </template>
-
-                                <div class="col-span-2" v-if="selected.has_privacy_policy || selected.has_dpo">
-                                    <div class="mt-2 border-t border-gray-200 pt-3 font-semibold text-gray-800 dark:border-gray-800 dark:text-white">
-                                        @lang('leadgreen::app.enrichment.privacy-title')
-                                    </div>
-                                    <p v-if="selected.has_dpo" class="mt-1 text-gray-900 dark:text-white">@{{ selected.dpo_name }} @{{ selected.dpo_email ? '<' + selected.dpo_email + '>' : '' }}</p>
-                                </div>
                             </template>
                             <div class="col-span-2 text-sm text-gray-500 dark:text-gray-400" v-else>
                                 @lang('leadgreen::app.enrichment.not-enriched')

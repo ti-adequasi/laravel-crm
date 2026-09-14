@@ -2,9 +2,9 @@
 
 return [
     [
-        'key'   => 'lead_green',
-        'name'  => 'leadgreen::app.acl.title',
+        'key' => 'lead_green',
+        'name' => 'leadgreen::app.acl.title',
         'route' => 'admin.leadgreen.index',
-        'sort'  => 6,
+        'sort' => 6,
     ],
 ];

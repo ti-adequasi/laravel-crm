@@ -10,7 +10,10 @@ return [
         'key' => 'lead_green.settings',
         'name' => 'leadgreen::app.settings.section',
         'info' => 'leadgreen::app.settings.section-info',
-        'icon' => 'icon-settings',
+        // The real icon-font class is "icon-setting" (singular) — "icon-
+        // settings" (plural) does not exist on its own, only as a prefix
+        // of compound names like icon-settings-group.
+        'icon' => 'icon-setting',
         'sort' => 1,
     ], [
         'key' => 'lead_green.settings.api_keys',
@@ -37,20 +40,6 @@ return [
                 'type' => 'number',
                 'default' => 45,
                 'validation' => 'min:1',
-            ],
-        ],
-    ], [
-        'key' => 'lead_green.settings.enrichment',
-        'name' => 'leadgreen::app.settings.enrichment.title',
-        'info' => 'leadgreen::app.settings.enrichment.info',
-        'sort' => 2,
-        'fields' => [
-            [
-                'name' => 'detect_lgpd_signals',
-                'title' => 'leadgreen::app.settings.enrichment.detect-lgpd-signals',
-                'info' => 'leadgreen::app.settings.enrichment.detect-lgpd-signals-info',
-                'type' => 'boolean',
-                'default' => 1,
             ],
         ],
     ],

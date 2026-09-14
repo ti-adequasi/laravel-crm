@@ -73,11 +73,6 @@ class LeadGreen extends Model implements LeadGreenContract
         'enrichment_status',
         'enrichment_score',
         'enriched_at',
-        'has_privacy_policy',
-        'privacy_policy_url',
-        'has_dpo',
-        'dpo_name',
-        'dpo_email',
 
         // CNPJ / company-registry enrichment.
         'cnpj',
@@ -125,8 +120,6 @@ class LeadGreen extends Model implements LeadGreenContract
         'longitude' => 'decimal:7',
         'enrichment_score' => 'integer',
         'enriched_at' => 'datetime',
-        'has_privacy_policy' => 'boolean',
-        'has_dpo' => 'boolean',
         'data_abertura' => 'date',
         'capital_social' => 'decimal:2',
         'opcao_simples' => 'boolean',

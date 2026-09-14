@@ -13,7 +13,7 @@ class GoogleMapsService
      * @param  string  $query  e.g. "Escolas em Mogi das Cruzes - SP"
      * @param  int  $limit  number of results to fetch (provider max ~300)
      * @param  int  $zoom  map zoom level used by the provider
-     * @return array  list of raw business results (the API "data" array)
+     * @return array list of raw business results (the API "data" array)
      *
      * @throws \RuntimeException when the API key is missing or the request fails
      */

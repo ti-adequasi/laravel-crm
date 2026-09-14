@@ -25,19 +25,19 @@ return new class extends Migration
         }
 
         DB::table('attributes')->insert([
-            'code'            => 'site',
-            'name'            => 'Site',
-            'type'            => 'text',
-            'entity_type'     => 'organizations',
-            'lookup_type'     => null,
-            'validation'      => 'url',
-            'sort_order'      => 10,
-            'is_required'     => 0,
-            'is_unique'       => 0,
-            'quick_add'       => 0,
+            'code' => 'site',
+            'name' => 'Site',
+            'type' => 'text',
+            'entity_type' => 'organizations',
+            'lookup_type' => null,
+            'validation' => 'url',
+            'sort_order' => 10,
+            'is_required' => 0,
+            'is_unique' => 0,
+            'quick_add' => 0,
             'is_user_defined' => 1,
-            'created_at'      => now(),
-            'updated_at'      => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 

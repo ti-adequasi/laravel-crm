@@ -37,6 +37,8 @@ class LeadPeering extends Model implements LeadPeeringContract
         'asn',
         'info_type',
         'info_traffic',
+        'info_scope',
+        'policy_general',
         'notes',
         'social_media',
 
@@ -58,6 +60,11 @@ class LeadPeering extends Model implements LeadPeeringContract
         'net_count',
         'fac_count',
         'ix_count',
+        'region_continent',
+        'sales_email',
+        'sales_phone',
+        'tech_email',
+        'tech_phone',
 
         // Prospecting funnel.
         'lead_status',
@@ -79,11 +86,6 @@ class LeadPeering extends Model implements LeadPeeringContract
         'enrichment_status',
         'enrichment_score',
         'enriched_at',
-        'has_privacy_policy',
-        'privacy_policy_url',
-        'has_dpo',
-        'dpo_name',
-        'dpo_email',
 
         // CNPJ / company-registry enrichment.
         'cnpj',
@@ -124,8 +126,6 @@ class LeadPeering extends Model implements LeadPeeringContract
         'longitude' => 'decimal:7',
         'enrichment_score' => 'integer',
         'enriched_at' => 'datetime',
-        'has_privacy_policy' => 'boolean',
-        'has_dpo' => 'boolean',
         'data_abertura' => 'date',
         'capital_social' => 'decimal:2',
         'opcao_simples' => 'boolean',

@@ -3,7 +3,6 @@
 namespace Webkul\LeadGreen\DataGrids;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Webkul\DataGrid\DataGrid;
 
 class LeadGreenDataGrid extends DataGrid
@@ -45,10 +44,6 @@ class LeadGreenDataGrid extends DataGrid
                 'lead_green_prospects.enrichment_score',
                 'lead_green_prospects.email',
                 'lead_green_prospects.whatsapp',
-                'lead_green_prospects.has_privacy_policy',
-                'lead_green_prospects.has_dpo',
-                'lead_green_prospects.dpo_name',
-                'lead_green_prospects.dpo_email',
                 'lead_green_prospects.used_at',
                 'lead_green_prospects.used_by',
                 'lead_green_prospects.full_address',
@@ -65,8 +60,6 @@ class LeadGreenDataGrid extends DataGrid
         $this->addFilter('website', 'lead_green_prospects.website');
         $this->addFilter('lead_status', 'lead_green_prospects.lead_status');
         $this->addFilter('enrichment_status', 'lead_green_prospects.enrichment_status');
-        $this->addFilter('has_privacy_policy', 'lead_green_prospects.has_privacy_policy');
-        $this->addFilter('has_dpo', 'lead_green_prospects.has_dpo');
         $this->addFilter('created_at', 'lead_green_prospects.created_at');
 
         return $queryBuilder;
@@ -77,12 +70,6 @@ class LeadGreenDataGrid extends DataGrid
      */
     public function prepareColumns()
     {
-        // Configuration > Lead Green > Enrichment — off for segments where a
-        // privacy policy / DPO isn't a meaningful prospecting signal. Columns
-        // stay hidden rather than removed so a re-enable doesn't lose data
-        // already gathered while it was on.
-        $detectLgpd = (bool) core()->getConfigData('lead_green.settings.enrichment.detect_lgpd_signals');
-
         $this->addColumn([
             'index' => 'name',
             'label' => trans('leadgreen::app.datagrid.name'),
@@ -308,60 +295,6 @@ class LeadGreenDataGrid extends DataGrid
                 }
 
                 return $badge;
-            },
-        ]);
-
-        $this->addColumn([
-            'index' => 'has_privacy_policy',
-            'label' => trans('leadgreen::app.datagrid.privacy'),
-            'type' => 'boolean',
-            'searchable' => false,
-            'filterable' => true,
-            'filterable_type' => 'dropdown',
-            'filterable_options' => [
-                ['label' => trans('leadgreen::app.enrichment.yes'), 'value' => 1],
-                ['label' => trans('leadgreen::app.enrichment.no'), 'value' => 0],
-            ],
-            'sortable' => true,
-            'visibility' => $detectLgpd,
-            'closure' => function ($row) {
-                if ($row->has_privacy_policy) {
-                    return '<span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/20 dark:text-green-400">✓ '.trans('leadgreen::app.enrichment.yes').'</span>';
-                }
-
-                return '<span class="text-xs text-gray-400">—</span>';
-            },
-        ]);
-
-        $this->addColumn([
-            'index' => 'has_dpo',
-            'label' => trans('leadgreen::app.datagrid.dpo'),
-            'type' => 'boolean',
-            'searchable' => false,
-            'filterable' => true,
-            'filterable_type' => 'dropdown',
-            'filterable_options' => [
-                ['label' => trans('leadgreen::app.enrichment.yes'), 'value' => 1],
-                ['label' => trans('leadgreen::app.enrichment.no'), 'value' => 0],
-            ],
-            'sortable' => true,
-            'visibility' => $detectLgpd,
-            'closure' => function ($row) {
-                if (! $row->has_dpo) {
-                    return '<span class="text-xs text-gray-400">—</span>';
-                }
-
-                $html = '<span class="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">✓ '.trans('leadgreen::app.enrichment.yes').'</span>';
-
-                if (! empty($row->dpo_name)) {
-                    $html .= '<div class="mt-1 text-xs text-gray-600 dark:text-gray-300" title="'.htmlspecialchars($row->dpo_name).'">'.htmlspecialchars(Str::limit($row->dpo_name, 22)).'</div>';
-                }
-
-                if (! empty($row->dpo_email)) {
-                    $html .= '<a href="mailto:'.htmlspecialchars($row->dpo_email).'" class="text-xs text-blue-600 hover:underline dark:text-blue-400" title="'.htmlspecialchars($row->dpo_email).'">'.htmlspecialchars(Str::limit($row->dpo_email, 22)).'</a>';
-                }
-
-                return $html;
             },
         ]);
 

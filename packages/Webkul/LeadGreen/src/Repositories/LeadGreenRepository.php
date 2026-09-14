@@ -212,9 +212,9 @@ class LeadGreenRepository extends Repository
     /**
      * Create a Person from the prospect's enriched data and link it to the
      * organization. Prefers a partner/administrator from the CNPJ "quadro de
-     * sócios", falls back to the DPO, then to the company's own name — a
-     * Lead reaches its organization through a person, so one is always
-     * created even without real enrichment data.
+     * sócios", falls back to the company's own name — a Lead reaches its
+     * organization through a person, so one is always created even without
+     * real enrichment data.
      */
     protected function createPersonFromLead(LeadGreen $prospect, $organization)
     {
@@ -237,16 +237,11 @@ class LeadGreenRepository extends Repository
             $jobTitle = $socios[0]['qualificacao'] ?? null;
         }
 
-        if (! $name && ! empty($prospect->dpo_name)) {
-            $name = $prospect->dpo_name;
-            $jobTitle = 'Encarregado de Dados (DPO)';
-        }
-
         if (! $name) {
             $name = $prospect->name;
         }
 
-        $emails = collect([$prospect->email, $prospect->company_email, $prospect->dpo_email])
+        $emails = collect([$prospect->email, $prospect->company_email])
             ->merge(is_array($prospect->emails_found) ? $prospect->emails_found : [])
             ->filter()
             ->unique()
@@ -375,19 +370,6 @@ class LeadGreenRepository extends Repository
                     $q = ! empty($socio['qualificacao']) ? ' — '.$socio['qualificacao'] : '';
                     $lines[] = '  - '.($socio['nome'] ?? '-').$q;
                 }
-            }
-        }
-
-        if ($prospect->has_privacy_policy || $prospect->has_dpo) {
-            $lines[] = '';
-            $lines[] = '--- LGPD ---';
-
-            if ($prospect->has_privacy_policy) {
-                $lines[] = 'Privacy policy: yes'.($prospect->privacy_policy_url ? " ({$prospect->privacy_policy_url})" : '');
-            }
-
-            if ($prospect->dpo_name || $prospect->dpo_email) {
-                $lines[] = 'DPO: '.trim(($prospect->dpo_name ?? '').' '.($prospect->dpo_email ? "<{$prospect->dpo_email}>" : ''));
             }
         }
 

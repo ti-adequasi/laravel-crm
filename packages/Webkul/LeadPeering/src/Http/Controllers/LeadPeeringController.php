@@ -54,6 +54,9 @@ class LeadPeeringController extends Controller
             'state' => 'nullable|string|max:255',
             'asn' => 'nullable|integer|min:0',
             'info_type' => 'nullable|string|max:255',
+            'info_scope' => 'nullable|string|max:255',
+            'policy_general' => 'nullable|string|max:255',
+            'region_continent' => 'nullable|string|max:255',
             'limit' => 'nullable|integer|min:1|max:300',
         ]);
 
@@ -153,6 +156,18 @@ class LeadPeeringController extends Controller
             if ($request->filled('info_type')) {
                 $filters['info_type'] = $request->input('info_type');
             }
+
+            if ($request->filled('info_scope')) {
+                $filters['info_scope'] = $request->input('info_scope');
+            }
+
+            if ($request->filled('policy_general')) {
+                $filters['policy_general'] = $request->input('policy_general');
+            }
+        }
+
+        if ($type === 'fac' && $request->filled('region_continent')) {
+            $filters['region_continent'] = $request->input('region_continent');
         }
 
         return $filters;
@@ -176,6 +191,8 @@ class LeadPeeringController extends Controller
             'asn' => $r['asn'] ?? null,
             'info_type' => $r['info_type'] ?? null,
             'info_traffic' => $r['info_traffic'] ?? null,
+            'info_scope' => $r['info_scope'] ?? null,
+            'policy_general' => $r['policy_general'] ?? null,
             'notes' => $r['notes'] ?? null,
             'social_media' => $r['social_media'] ?? [],
             'country' => $r['country'] ?? null,
@@ -189,6 +206,11 @@ class LeadPeeringController extends Controller
             'net_count' => $r['net_count'] ?? null,
             'fac_count' => $r['fac_count'] ?? null,
             'ix_count' => $r['ix_count'] ?? null,
+            'region_continent' => $r['region_continent'] ?? null,
+            'sales_email' => $r['sales_email'] ?? null,
+            'sales_phone' => $r['sales_phone'] ?? null,
+            'tech_email' => $r['tech_email'] ?? null,
+            'tech_phone' => $r['tech_phone'] ?? null,
             'status' => $r['status'] ?? 'ok',
         ];
     }

@@ -93,8 +93,6 @@ return [
         'website' => 'Site',
         'status' => 'Status',
         'enrichment' => 'Enriquecimento',
-        'privacy' => 'Política de privacidade',
-        'dpo' => 'DPO',
         'actions' => 'Ações',
         'view' => 'Visualizar',
         'convert' => 'Converter em lead',
@@ -119,7 +117,6 @@ return [
         'razao-social' => 'Razão social',
         'situacao' => 'Situação',
         'porte' => 'Porte',
-        'privacy-title' => 'LGPD',
         'yes' => 'Sim',
         'no' => 'Não',
         'status-enriched' => 'Enriquecido',
@@ -179,13 +176,6 @@ return [
             'rapidapi-maps-host' => 'Host RapidAPI',
             'cnpja-api-key' => 'Chave da API comercial CNPJá',
             'cnpja-daily-limit' => 'Limite diário de créditos CNPJá',
-        ],
-
-        'enrichment' => [
-            'title' => 'Enriquecimento',
-            'info' => 'O que o enriquecimento por site tenta descobrir, além de e-mail, redes sociais e CNPJ.',
-            'detect-lgpd-signals' => 'Detectar política de privacidade e DPO (LGPD)',
-            'detect-lgpd-signals-info' => 'Desligue se você usa o CRM para segmentos onde política de privacidade e Encarregado de Dados (DPO) não fazem sentido como critério de prospecção. Não afeta enriquecimentos já feitos.',
         ],
     ],
 ];

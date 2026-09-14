@@ -28,7 +28,7 @@
                     </p>
 
                     <div class="flex flex-col gap-4">
-                        <!-- Step 1: what kind of PeeringDB record to search. Changes what
+                        <!-- Step 1: what kind of PeeringDB record to search. Changes which
                              filters make sense (a network has no country/city of its own —
                              see the note below) and how a result gets displayed, so it's
                              locked once a preview exists — "Nova busca" clears it first
@@ -42,7 +42,7 @@
                                 <button
                                     type="button"
                                     :disabled="loading || importing || preview"
-                                    class="rounded-l-md px-4 py-2 text-sm font-medium transition-colors"
+                                    class="ltr:rounded-l-md rtl:rounded-r-md px-4 py-2 text-sm font-medium transition-colors"
                                     :class="form.type === 'net' ? 'bg-brandColor text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
                                     @click="form.type = 'net'"
                                 >
@@ -60,7 +60,7 @@
                                 <button
                                     type="button"
                                     :disabled="loading || importing || preview"
-                                    class="rounded-r-md border-l border-gray-300 px-4 py-2 text-sm font-medium transition-colors dark:border-gray-700"
+                                    class="ltr:rounded-r-md rtl:rounded-l-md border-l border-gray-300 px-4 py-2 text-sm font-medium transition-colors dark:border-gray-700"
                                     :class="form.type === 'fac' ? 'bg-brandColor text-white' : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
                                     @click="form.type = 'fac'"
                                 >
@@ -107,13 +107,16 @@
                                     class="w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                                 />
                             </div>
+                        </div>
 
-                            <!-- Location fields: meaningless for a 'net' search — PeeringDB's
-                                 network object carries no country/city/state of its own
-                                 (confirmed live: the API silently ignores one rather than
-                                 erroring). Hidden instead of sent-and-ignored, with an
-                                 explanation, rather than leaving the user to wonder why a
-                                 filter "did nothing". -->
+                        <!-- Step 2: fields specific to the chosen type, for a finer search.
+                             Location fields are meaningless for a 'net' search — PeeringDB's
+                             network object carries no country/city/state of its own
+                             (confirmed live: the API silently ignores one rather than
+                             erroring) — hidden instead of sent-and-ignored, with an
+                             explanation, rather than leaving the user to wonder why a
+                             filter "did nothing". -->
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
                             <template v-if="form.type !== 'net'">
                                 <div class="flex flex-col gap-1">
                                     <label class="font-medium text-gray-800 dark:text-white">@lang('leadpeering::app.search.country-label')</label>
@@ -139,16 +142,30 @@
 
                                 <div class="flex flex-col gap-1">
                                     <label class="font-medium text-gray-800 dark:text-white">@lang('leadpeering::app.search.state-label')</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         v-model="form.state"
                                         :disabled="loading || importing"
-                                        class="w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                    />
+                                        class="custom-select w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    >
+                                        <option value="">@lang('leadpeering::app.search.state-any')</option>
+                                        <option v-for="uf in brazilianStates" :key="uf.code" :value="uf.code">@{{ uf.code }} — @{{ uf.name }}</option>
+                                    </select>
                                 </div>
                             </template>
 
-                            <template v-else>
+                            <div v-if="form.type === 'fac'" class="flex flex-col gap-1">
+                                <label class="font-medium text-gray-800 dark:text-white">@lang('leadpeering::app.search.region-label')</label>
+                                <select
+                                    v-model="form.region_continent"
+                                    :disabled="loading || importing"
+                                    class="custom-select w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                >
+                                    <option value="">@lang('leadpeering::app.search.info-type-any')</option>
+                                    <option v-for="r in continentChoices" :key="r" :value="r">@{{ r }}</option>
+                                </select>
+                            </div>
+
+                            <template v-if="form.type === 'net'">
                                 <div class="flex flex-col gap-1">
                                     <label class="font-medium text-gray-800 dark:text-white">@lang('leadpeering::app.search.asn-label')</label>
                                     <input
@@ -172,16 +189,39 @@
                                     </select>
                                 </div>
 
-                                <div class="flex items-start gap-2 rounded-md bg-blue-50 p-3 text-xs text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 md:col-span-1">
-                                    <span class="icon-info mt-0.5"></span>
+                                <div class="flex flex-col gap-1">
+                                    <label class="font-medium text-gray-800 dark:text-white">@lang('leadpeering::app.search.scope-label')</label>
+                                    <select
+                                        v-model="form.info_scope"
+                                        :disabled="loading || importing"
+                                        class="custom-select w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    >
+                                        <option value="">@lang('leadpeering::app.search.info-type-any')</option>
+                                        <option v-for="s in scopeChoices" :key="s" :value="s">@{{ s }}</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex flex-col gap-1">
+                                    <label class="font-medium text-gray-800 dark:text-white">@lang('leadpeering::app.search.policy-label')</label>
+                                    <select
+                                        v-model="form.policy_general"
+                                        :disabled="loading || importing"
+                                        class="custom-select w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    >
+                                        <option value="">@lang('leadpeering::app.search.info-type-any')</option>
+                                        <option v-for="p in policyChoices" :key="p" :value="p">@{{ p }}</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex items-start gap-2 rounded-sm border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400 md:col-span-2">
+                                    <span class="icon-info mt-0.5 dark:!text-blue-400"></span>
                                     <span>@lang('leadpeering::app.search.net-no-geography-note')</span>
                                 </div>
                             </template>
                         </div>
 
-                        <!-- Filters — all re-appliable client-side on the current result
-                             set without another call, same idea as the pre-search fields
-                             above but these only make sense once results exist. -->
+                        <!-- Filters — re-appliable client-side on the current result set
+                             without another call. -->
                         <div v-if="preview" class="flex flex-col gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <label class="font-medium text-gray-800 dark:text-white">
@@ -193,48 +233,27 @@
                                 </span>
                             </div>
 
-                            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                                <div class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/40">
-                                    <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                        <span class="icon-organization"></span>
-                                        @lang('leadpeering::app.search.filters.group-presence')
-                                    </div>
-
-                                    <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadpeering::app.search.filters.website')</label>
-                                        <select
-                                            v-model="filters.hasWebsite"
-                                            class="custom-select w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                        >
-                                            <option value="yes">@lang('leadpeering::app.search.filters.website-yes')</option>
-                                            <option value="all">@lang('leadpeering::app.search.filters.website-all')</option>
-                                            <option value="no">@lang('leadpeering::app.search.filters.website-no')</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="flex flex-col gap-1">
-                                        <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadpeering::app.search.filters.min-net-count')</label>
-                                        <input
-                                            type="number"
-                                            v-model.number="filters.minNetCount"
-                                            min="0"
-                                            placeholder="0"
-                                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                        />
-                                    </div>
+                            <div class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/40 md:w-fit md:min-w-[280px]">
+                                <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    <span class="icon-filter"></span>
+                                    @lang('leadpeering::app.search.filters.group-status')
                                 </div>
 
-                                <div class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/40">
-                                    <div class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                        <span class="icon-filter"></span>
-                                        @lang('leadpeering::app.search.filters.group-status')
-                                    </div>
-
-                                    <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
-                                        <input type="checkbox" v-model="filters.hideDuplicates" />
-                                        @lang('leadpeering::app.search.filters.hide-duplicates')
-                                    </label>
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadpeering::app.search.filters.min-net-count')</label>
+                                    <input
+                                        type="number"
+                                        v-model.number="filters.minNetCount"
+                                        min="0"
+                                        placeholder="0"
+                                        class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    />
                                 </div>
+
+                                <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                    <input type="checkbox" v-model="filters.hideDuplicates" />
+                                    @lang('leadpeering::app.search.filters.hide-duplicates')
+                                </label>
                             </div>
                         </div>
 
@@ -291,9 +310,14 @@
                          batch, not a fixed guessed list. -->
                     <div v-if="availableTypes.length" class="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
                         <div class="flex items-center justify-between">
-                            <label class="font-medium text-gray-800 dark:text-white">
-                                @lang('leadpeering::app.search.filters.types-label')
-                            </label>
+                            <div>
+                                <label class="font-medium text-gray-800 dark:text-white">
+                                    @lang('leadpeering::app.search.filters.types-label')
+                                </label>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    @lang('leadpeering::app.search.filters.types-hint')
+                                </p>
+                            </div>
 
                             <button
                                 v-if="filters.types.length"
@@ -313,11 +337,11 @@
                                 class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition-colors"
                                 :class="isTypeSelected(entry.type)
                                     ? 'bg-brandColor text-white ring-brandColor'
-                                    : 'bg-indigo-50 text-indigo-700 ring-indigo-700/10 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:ring-indigo-400/20'"
+                                    : 'bg-blue-50 text-blue-700 ring-blue-700/10 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-400/20'"
                                 @click="toggleType(entry.type)"
                             >
                                 @{{ entry.type }}
-                                <span :class="isTypeSelected(entry.type) ? 'text-white/80' : 'text-indigo-700/60 dark:text-indigo-400/60'">(@{{ entry.count }})</span>
+                                <span :class="isTypeSelected(entry.type) ? 'text-white/80' : 'text-blue-700/60 dark:text-blue-400/60'">(@{{ entry.count }})</span>
                             </button>
                         </div>
                     </div>
@@ -429,34 +453,54 @@
                                 <span v-else class="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">@lang('leadpeering::app.search.preview.badge-new')</span>
                             </div>
 
-                            <div v-if="selectedLead.has_website">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.website')</label>
-                                <p class="mt-1"><a :href="selectedLead.website" target="_blank" class="text-brandColor hover:underline">@{{ shortWebsite(selectedLead.website) }}</a></p>
+                            <div v-if="selectedLead.has_website" class="min-w-0">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.website')</label>
+                                <p class="mt-1"><a :href="selectedLead.website" target="_blank" class="break-all text-brandColor hover:underline">@{{ shortWebsite(selectedLead.website) }}</a></p>
                             </div>
 
                             <div v-if="selectedLead.asn">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.asn')</label>
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.asn')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ selectedLead.asn }}</p>
                             </div>
 
                             <div v-if="selectedLead.info_type">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.network-type')</label>
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.network-type')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ selectedLead.info_type }}</p>
                             </div>
 
-                            <div v-if="selectedLead.info_traffic">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.info-traffic')</label>
-                                <p class="mt-1 text-gray-900 dark:text-white">@{{ selectedLead.info_traffic }}</p>
+                            <div v-if="selectedLead.info_scope">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.scope')</label>
+                                <p class="mt-1 text-gray-900 dark:text-white">@{{ selectedLead.info_scope }}</p>
+                            </div>
+
+                            <div v-if="selectedLead.policy_general">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.policy')</label>
+                                <p class="mt-1 text-gray-900 dark:text-white">@{{ selectedLead.policy_general }}</p>
                             </div>
 
                             <div class="col-span-2" v-if="selectedLead.address1 || selectedLead.city">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.address')</label>
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.address')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ [selectedLead.address1, selectedLead.city, selectedLead.state, selectedLead.country].filter(Boolean).join(', ') }}</p>
                             </div>
 
+                            <div v-if="selectedLead.region_continent">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.region')</label>
+                                <p class="mt-1 text-gray-900 dark:text-white">@{{ selectedLead.region_continent }}</p>
+                            </div>
+
                             <div v-if="presenceLabel(selectedLead)">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.presence')</label>
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.presence')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ presenceLabel(selectedLead) }}</p>
+                            </div>
+
+                            <div v-if="selectedLead.sales_email || selectedLead.sales_phone" class="min-w-0">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.sales-contact')</label>
+                                <p class="mt-1 break-all text-gray-900 dark:text-white">@{{ [selectedLead.sales_email, selectedLead.sales_phone].filter(Boolean).join(' · ') }}</p>
+                            </div>
+
+                            <div v-if="selectedLead.tech_email || selectedLead.tech_phone" class="min-w-0">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.tech-contact')</label>
+                                <p class="mt-1 break-all text-gray-900 dark:text-white">@{{ [selectedLead.tech_email, selectedLead.tech_phone].filter(Boolean).join(' · ') }}</p>
                             </div>
 
                             <div class="col-span-2">
@@ -492,13 +536,34 @@
                         selectedKeys: new Set(),
                         pipelines: {!! $pipelines->values()->toJson() !!},
                         selectedPipelineId: {{ optional($pipelines->firstWhere('is_default', true) ?? $pipelines->first())->id ?? 'null' }},
-                        // PeeringDB's own info_type enum — offered as a dropdown
-                        // rather than free text, since these are the API's real,
-                        // fixed values (not a guessed list).
+                        // PeeringDB's own fixed enums — offered as dropdowns rather than
+                        // free text, since these are the API's real values, not a guessed
+                        // list. info_type/policy_general were both directly confirmed
+                        // against live data ("NSP"/"Content"/etc, "Open"/"Restrictive");
+                        // info_scope's "Global" and region_continent's "North America"
+                        // were directly confirmed too, the remaining entries in each are
+                        // PeeringDB's documented, long-stable standard set.
                         networkTypeChoices: [
                             'NSP', 'Content', 'Cable/DSL/ISP', 'Enterprise',
                             'Educational/Research', 'Non-Profit', 'Route Server',
                             'Network Services', 'Route Collector', 'Government', 'Not Disclosed',
+                        ],
+                        scopeChoices: [
+                            'Regional', 'North America', 'Asia Pacific', 'Europe',
+                            'South America', 'Africa', 'Middle East', 'Australia', 'Global',
+                        ],
+                        policyChoices: ['Open', 'Selective', 'Restrictive', 'No'],
+                        continentChoices: ['North America', 'South America', 'Europe', 'Asia', 'Africa', 'Oceania'],
+                        brazilianStates: [
+                            { code: 'AC', name: 'Acre' }, { code: 'AL', name: 'Alagoas' }, { code: 'AP', name: 'Amapá' },
+                            { code: 'AM', name: 'Amazonas' }, { code: 'BA', name: 'Bahia' }, { code: 'CE', name: 'Ceará' },
+                            { code: 'DF', name: 'Distrito Federal' }, { code: 'ES', name: 'Espírito Santo' }, { code: 'GO', name: 'Goiás' },
+                            { code: 'MA', name: 'Maranhão' }, { code: 'MT', name: 'Mato Grosso' }, { code: 'MS', name: 'Mato Grosso do Sul' },
+                            { code: 'MG', name: 'Minas Gerais' }, { code: 'PA', name: 'Pará' }, { code: 'PB', name: 'Paraíba' },
+                            { code: 'PR', name: 'Paraná' }, { code: 'PE', name: 'Pernambuco' }, { code: 'PI', name: 'Piauí' },
+                            { code: 'RJ', name: 'Rio de Janeiro' }, { code: 'RN', name: 'Rio Grande do Norte' }, { code: 'RS', name: 'Rio Grande do Sul' },
+                            { code: 'RO', name: 'Rondônia' }, { code: 'RR', name: 'Roraima' }, { code: 'SC', name: 'Santa Catarina' },
+                            { code: 'SP', name: 'São Paulo' }, { code: 'SE', name: 'Sergipe' }, { code: 'TO', name: 'Tocantins' },
                         ],
                         form: {
                             type: 'net',
@@ -506,12 +571,14 @@
                             country: 'BR',
                             city: '',
                             state: '',
+                            region_continent: '',
                             asn: null,
                             info_type: '',
+                            info_scope: '',
+                            policy_general: '',
                             limit: 50,
                         },
                         filters: {
-                            hasWebsite: 'yes',
                             minNetCount: 0,
                             hideDuplicates: false,
                             types: [],
@@ -526,8 +593,6 @@
                         }
 
                         return this.preview.leads.filter((lead) => {
-                            if (this.filters.hasWebsite === 'yes' && ! lead.has_website) return false;
-                            if (this.filters.hasWebsite === 'no' && lead.has_website) return false;
                             if (this.filters.minNetCount && (lead.net_count || 0) < this.filters.minNetCount) return false;
                             if (this.filters.hideDuplicates && lead.is_duplicate) return false;
                             if (this.filters.types.length && ! this.filters.types.includes(lead.info_type)) return false;

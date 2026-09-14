@@ -37,6 +37,33 @@ country/city/state fields entirely (with an inline note explaining why)
 rather than sending a filter PeeringDB would quietly do nothing with —
 switch to Organization or Data center to filter by location.
 
+## Fields captured beyond identity/location
+
+Beyond name/website/address, a prospect also carries real PeeringDB detail
+useful on its own, without needing website enrichment first:
+
+- **`net`**: `info_scope` (Regional/Global/etc — a real, fixed PeeringDB
+  enum) and `policy_general` (Open/Selective/Restrictive/No — the
+  network's public peering openness), both directly confirmed against
+  live data and offered as search filters (`Escopo`/`Política de
+  peering`) alongside `info_type`/ASN.
+- **`fac`**: `region_continent` (also a real filter — `Região`) plus
+  `sales_email`/`sales_phone`/`tech_email`/`tech_phone` — a facility's own
+  listed contacts, straight from PeeringDB. These feed directly into the
+  Person created on conversion (`LeadPeeringRepository::createPersonFromLead()`),
+  so a data center with its own listed sales contact doesn't need website
+  enrichment to produce a usable contact at all.
+- **`org`**: `social_media` (captured from the start, now also rendered in
+  the detail modal — previously stored but never shown).
+
+The "tem site" (has-website) filter present in the module's first cut was
+removed by direct request — every result already shows a "Sem site" badge
+per row and can't be selected for import either way, so a separate global
+toggle was redundant. "Estado" is a dropdown of the 27 Brazilian UF codes
+rather than free text, matching how PeeringDB's own `state` field is
+populated for BR addresses (confirmed: `SP`, `PR`, `BA`, ... — a 2-letter
+code, not a full name).
+
 ## Configuration
 
 Configured from **Configuration > PeeringDB Leads** in the admin UI
@@ -61,13 +88,10 @@ deploy):
   configured in both modules' settings, they need to share one real daily
   counter rather than each believing it has the full quota alone. See
   `CnpjService::creditCacheKey()`.
-- **Detectar política de privacidade e DPO (LGPD)** — on by default; turn
-  off for segments where a privacy policy / Data Protection Officer isn't a
-  meaningful prospecting signal. Off skips the extra HTTP fetch of the
-  privacy-policy page entirely, not just the resulting fields; the
-  "Política de privacidade" / "DPO" grid columns hide accordingly. Doesn't
-  touch data already gathered while it was on. A separate setting from
-  LeadGreen's own identically-named one.
+LGPD privacy-policy/DPO detection — present in the module's first cut,
+mirroring a feature LeadGreen had — was removed by direct request shortly
+after: not a meaningful prospecting signal for this data source (or for
+LeadGreen's, which dropped it the same way in a companion change).
 
 Website enrichment also verifies the picked e-mail via
 [Disify](https://www.disify.com/) (free, no key) — a real DNS/MX check plus

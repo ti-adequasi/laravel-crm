@@ -55,34 +55,69 @@
                         </div>
 
                         <div class="grid grid-cols-2 gap-4 p-6 text-sm">
-                            <div v-if="selected.website">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.website')</label>
-                                <p class="mt-1"><a :href="selected.website" target="_blank" class="text-brandColor hover:underline">@{{ selected.website }}</a></p>
+                            <div v-if="selected.website" class="min-w-0">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.website')</label>
+                                <p class="mt-1"><a :href="selected.website" target="_blank" class="break-all text-brandColor hover:underline">@{{ selected.website }}</a></p>
                             </div>
 
                             <div v-if="selected.asn">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.asn')</label>
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.asn')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ selected.asn }}</p>
                             </div>
 
                             <div v-if="selected.info_type">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.network-type')</label>
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.network-type')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ selected.info_type }}</p>
                             </div>
 
+                            <div v-if="selected.info_scope">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.scope')</label>
+                                <p class="mt-1 text-gray-900 dark:text-white">@{{ selected.info_scope }}</p>
+                            </div>
+
                             <div v-if="selected.info_traffic">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.info-traffic')</label>
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.info-traffic')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ selected.info_traffic }}</p>
                             </div>
 
+                            <div v-if="selected.policy_general">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.policy')</label>
+                                <p class="mt-1 text-gray-900 dark:text-white">@{{ selected.policy_general }}</p>
+                            </div>
+
                             <div class="col-span-2" v-if="fullAddress">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.address')</label>
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.address')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ fullAddress }}</p>
                             </div>
 
-                            <div class="col-span-2" v-if="presenceLabel">
-                                <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.modal.presence')</label>
+                            <div v-if="selected.region_continent">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.region')</label>
+                                <p class="mt-1 text-gray-900 dark:text-white">@{{ selected.region_continent }}</p>
+                            </div>
+
+                            <div v-if="presenceLabel">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.presence')</label>
                                 <p class="mt-1 text-gray-900 dark:text-white">@{{ presenceLabel }}</p>
+                            </div>
+
+                            <!-- sales_email/tech_email/*_phone come straight from
+                                 PeeringDB's own facility listing — real contacts, not
+                                 something enrichment had to scrape a website for. -->
+                            <div v-if="selected.sales_email || selected.sales_phone" class="min-w-0">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.sales-contact')</label>
+                                <p class="mt-1 break-all text-gray-900 dark:text-white">@{{ [selected.sales_email, selected.sales_phone].filter(Boolean).join(' · ') }}</p>
+                            </div>
+
+                            <div v-if="selected.tech_email || selected.tech_phone" class="min-w-0">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.tech-contact')</label>
+                                <p class="mt-1 break-all text-gray-900 dark:text-white">@{{ [selected.tech_email, selected.tech_phone].filter(Boolean).join(' · ') }}</p>
+                            </div>
+
+                            <div class="col-span-2" v-if="socialLinks.length">
+                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.modal.social-media')</label>
+                                <div class="mt-1 flex flex-col gap-1">
+                                    <a v-for="s in socialLinks" :key="s.identifier" :href="s.identifier" target="_blank" class="break-all text-brandColor hover:underline">@{{ s.service }}: @{{ s.identifier }}</a>
+                                </div>
                             </div>
 
                             <div class="col-span-2">
@@ -96,7 +131,7 @@
                                     @lang('leadpeering::app.enrichment.title')
                                 </div>
                                 <div v-if="selected.email" class="min-w-0">
-                                    <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.enrichment.email')</label>
+                                    <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.enrichment.email')</label>
                                     <p class="mt-1 flex flex-wrap items-center gap-2">
                                         <a :href="'mailto:' + selected.email" class="break-all text-brandColor hover:underline">@{{ selected.email }}</a>
                                         <span v-if="selected.email_verified === true" class="inline-flex shrink-0 items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/20 dark:text-green-400" title="@lang('leadpeering::app.enrichment.email-verified-info')">✓ @lang('leadpeering::app.enrichment.email-verified')</span>
@@ -104,34 +139,27 @@
                                     </p>
                                 </div>
                                 <div v-if="selected.whatsapp">
-                                    <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.enrichment.whatsapp')</label>
+                                    <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.enrichment.whatsapp')</label>
                                     <p class="mt-1 text-gray-900 dark:text-white">@{{ selected.whatsapp }}</p>
                                 </div>
-                                <div v-if="selected.instagram">
-                                    <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.enrichment.instagram')</label>
-                                    <p class="mt-1"><a :href="selected.instagram" target="_blank" class="text-brandColor hover:underline">@{{ selected.instagram }}</a></p>
+                                <div v-if="selected.instagram" class="min-w-0">
+                                    <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.enrichment.instagram')</label>
+                                    <p class="mt-1"><a :href="selected.instagram" target="_blank" class="break-all text-brandColor hover:underline">@{{ selected.instagram }}</a></p>
                                 </div>
-                                <div v-if="selected.facebook">
-                                    <label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.enrichment.facebook')</label>
-                                    <p class="mt-1"><a :href="selected.facebook" target="_blank" class="text-brandColor hover:underline">@{{ selected.facebook }}</a></p>
+                                <div v-if="selected.facebook" class="min-w-0">
+                                    <label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.enrichment.facebook')</label>
+                                    <p class="mt-1"><a :href="selected.facebook" target="_blank" class="break-all text-brandColor hover:underline">@{{ selected.facebook }}</a></p>
                                 </div>
 
                                 <template v-if="selected.cnpj">
                                     <div class="col-span-2 mt-2 border-t border-gray-200 pt-3 font-semibold text-gray-800 dark:border-gray-800 dark:text-white">
                                         @lang('leadpeering::app.enrichment.company-title')
                                     </div>
-                                    <div><label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.enrichment.cnpj')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.cnpj }}</p></div>
-                                    <div v-if="selected.razao_social"><label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.enrichment.razao-social')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.razao_social }}</p></div>
-                                    <div v-if="selected.situacao_cadastral"><label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.enrichment.situacao')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.situacao_cadastral }}</p></div>
-                                    <div v-if="selected.porte"><label class="text-xs font-medium text-gray-500">@lang('leadpeering::app.enrichment.porte')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.porte }}</p></div>
+                                    <div><label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.enrichment.cnpj')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.cnpj }}</p></div>
+                                    <div v-if="selected.razao_social"><label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.enrichment.razao-social')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.razao_social }}</p></div>
+                                    <div v-if="selected.situacao_cadastral"><label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.enrichment.situacao')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.situacao_cadastral }}</p></div>
+                                    <div v-if="selected.porte"><label class="text-xs font-medium text-gray-500 dark:text-gray-400">@lang('leadpeering::app.enrichment.porte')</label><p class="mt-1 text-gray-900 dark:text-white">@{{ selected.porte }}</p></div>
                                 </template>
-
-                                <div class="col-span-2" v-if="selected.has_privacy_policy || selected.has_dpo">
-                                    <div class="mt-2 border-t border-gray-200 pt-3 font-semibold text-gray-800 dark:border-gray-800 dark:text-white">
-                                        @lang('leadpeering::app.enrichment.privacy-title')
-                                    </div>
-                                    <p v-if="selected.has_dpo" class="mt-1 text-gray-900 dark:text-white">@{{ selected.dpo_name }} @{{ selected.dpo_email ? '<' + selected.dpo_email + '>' : '' }}</p>
-                                </div>
                             </template>
                             <div class="col-span-2 text-sm text-gray-500 dark:text-gray-400" v-else>
                                 @lang('leadpeering::app.enrichment.not-enriched')
@@ -173,6 +201,35 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Discard modal — a themed, dark-mode-aware dialog instead of a
+                     native prompt(), matching the convert modal above. -->
+                <div v-if="discardId" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" @click.self="closeDiscard">
+                    <div class="w-full max-w-sm rounded-lg bg-white shadow-xl dark:bg-gray-900">
+                        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">@lang('leadpeering::app.datagrid.discard')</h3>
+                            <button type="button" class="text-2xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" @click="closeDiscard">&times;</button>
+                        </div>
+
+                        <div class="flex flex-col gap-3 p-6 text-sm">
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('leadpeering::app.modal.discard-reason-prompt')</label>
+                                <input
+                                    type="text"
+                                    v-model="discardReason"
+                                    maxlength="255"
+                                    class="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                    @keyup.enter="confirmDiscard"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-2 border-t border-gray-200 px-6 py-4 dark:border-gray-800">
+                            <button type="button" class="secondary-button" @click="closeDiscard">@lang('leadpeering::app.modal.cancel')</button>
+                            <button type="button" class="primary-button" :disabled="! discardReason" @click="confirmDiscard">@lang('leadpeering::app.datagrid.discard')</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </script>
 
@@ -186,6 +243,8 @@
                         pipelines: {!! $pipelines->values()->toJson() !!},
                         convertId: null,
                         convertPipelineId: {{ optional($pipelines->firstWhere('is_default', true) ?? $pipelines->first())->id ?? 'null' }},
+                        discardId: null,
+                        discardReason: '',
                         enrichmentStatus: null,
                         pollTimer: null,
                     };
@@ -210,6 +269,12 @@
 
                         return parts.join(' · ');
                     },
+
+                    socialLinks() {
+                        if (! this.selected || ! Array.isArray(this.selected.social_media)) return [];
+
+                        return this.selected.social_media.filter((s) => s && s.identifier && s.service !== 'website');
+                    },
                 },
 
                 created() {
@@ -217,7 +282,7 @@
 
                     window.convertLeadPeering = (id) => this.openConvert(id);
 
-                    window.discardLeadPeering = (id) => this.discard(id);
+                    window.discardLeadPeering = (id) => this.openDiscard(id);
 
                     this.pollEnrichmentStatus();
                 },
@@ -301,14 +366,22 @@
                             });
                     },
 
-                    discard(id) {
-                        const reason = prompt("@lang('leadpeering::app.modal.discard-reason-prompt')");
+                    openDiscard(id) {
+                        this.discardId = id;
+                        this.discardReason = '';
+                    },
 
-                        if (! reason) {
+                    closeDiscard() {
+                        this.discardId = null;
+                        this.discardReason = '';
+                    },
+
+                    confirmDiscard() {
+                        if (! this.discardId || ! this.discardReason) {
                             return;
                         }
 
-                        this.$axios.post(`{{ url(config('app.admin_path').'/leadpeering/discard') }}/${id}`, { reason })
+                        this.$axios.post(`{{ url(config('app.admin_path').'/leadpeering/discard') }}/${this.discardId}`, { reason: this.discardReason })
                             .then((response) => {
                                 this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });
 
@@ -316,6 +389,9 @@
                             })
                             .catch((error) => {
                                 this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.message ?? 'Error' });
+                            })
+                            .finally(() => {
+                                this.closeDiscard();
                             });
                     },
                 },
